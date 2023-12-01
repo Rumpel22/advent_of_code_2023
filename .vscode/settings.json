@@ -1,0 +1,14 @@
+{
+    "files.exclude": {
+        "target/": true
+    },
+    "editor.formatOnSave": true,
+    "rust-analyzer.typing.autoClosingAngleBrackets.enable": true,
+    "workbench.colorCustomizations": {
+        "editorInlayHint.foreground": "#aaa"
+    },
+    "git.closeDiffOnOperation": true,
+    "git.mergeEditor": false,
+    "git.timeline.showAuthor": false,
+    "git.autorefresh": true
+}
