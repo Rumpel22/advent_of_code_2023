@@ -77,6 +77,22 @@ impl Game {
                 .any(|(cube_count, _)| cube_count > &max_number)
         })
     }
+
+    fn min_by_color(&self, color: Color) -> u32 {
+        self.subsets
+            .iter()
+            .map(|subset| {
+                subset
+                    .cubes
+                    .iter()
+                    .filter(|(_, cube_color)| cube_color == &color)
+                    .max_by(|a, b| a.0.cmp(&b.0))
+                    .map(|(cube_count, _)| *cube_count)
+                    .unwrap_or(0)
+            })
+            .max()
+            .unwrap_or(0)
+    }
 }
 
 fn main() {
@@ -95,4 +111,15 @@ fn main() {
         .sum::<u32>();
 
     println!("The sum of the valid game IDs is {sum_of_ids}");
+
+    let power_of_cubes = games
+        .iter()
+        .map(|game| {
+            game.min_by_color(Color::Blue)
+                * game.min_by_color(Color::Green)
+                * game.min_by_color(Color::Red)
+        })
+        .sum::<u32>();
+
+    println!("The sum of the power of cubes is {power_of_cubes}");
 }
