@@ -67,14 +67,14 @@ impl FromStr for Game {
 impl Game {
     fn is_possible(&self, color: Color, max_number: u32) -> bool {
         self.subsets.iter().all(|subset| {
-            !subset
+            subset
                 .iter()
                 .filter(|(_, cube_color)| cube_color == &color)
-                .any(|(cube_count, _)| cube_count > &max_number)
+                .all(|(cube_count, _)| cube_count <= &max_number)
         })
     }
 
-    fn min_by_color(&self, color: Color) -> u32 {
+    fn min_required_by_color(&self, color: Color) -> u32 {
         self.subsets
             .iter()
             .map(|subset| {
@@ -110,9 +110,9 @@ fn main() {
     let power_of_cubes = games
         .iter()
         .map(|game| {
-            game.min_by_color(Color::Blue)
-                * game.min_by_color(Color::Green)
-                * game.min_by_color(Color::Red)
+            game.min_required_by_color(Color::Blue)
+                * game.min_required_by_color(Color::Green)
+                * game.min_required_by_color(Color::Red)
         })
         .sum::<u32>();
 
