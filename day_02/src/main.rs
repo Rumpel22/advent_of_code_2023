@@ -17,9 +17,7 @@ enum Color {
     Green,
 }
 
-struct Subset {
-    cubes: Vec<(u32, Color)>,
-}
+type Subset = Vec<(u32, Color)>;
 
 struct Game {
     id: u32,
@@ -40,8 +38,7 @@ fn parse_cube(s: &str) -> IResult<&str, (u32, Color)> {
 }
 
 fn parse_subset(s: &str) -> IResult<&str, Subset> {
-    let (s, cubes) = separated_list1(tag(","), parse_cube)(s)?;
-    IResult::Ok((s, Subset { cubes }))
+    separated_list1(tag(","), parse_cube)(s)
 }
 
 fn parse_game(s: &str) -> IResult<&str, Game> {
@@ -71,7 +68,6 @@ impl Game {
     fn is_possible(&self, color: Color, max_number: u32) -> bool {
         self.subsets.iter().all(|subset| {
             !subset
-                .cubes
                 .iter()
                 .filter(|(_, cube_color)| cube_color == &color)
                 .any(|(cube_count, _)| cube_count > &max_number)
@@ -83,11 +79,10 @@ impl Game {
             .iter()
             .map(|subset| {
                 subset
-                    .cubes
                     .iter()
                     .filter(|(_, cube_color)| cube_color == &color)
-                    .max_by(|a, b| a.0.cmp(&b.0))
-                    .map(|(cube_count, _)| *cube_count)
+                    .map(|(count, _)| *count)
+                    .max()
                     .unwrap_or(0)
             })
             .max()
