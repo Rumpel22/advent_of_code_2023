@@ -2,10 +2,10 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{multispace0, u32},
-    combinator::value,
+    combinator::{map, value},
     error::Error,
     multi::separated_list1,
-    sequence::separated_pair,
+    sequence::{delimited, pair, separated_pair},
     Finish, IResult,
 };
 use std::str::FromStr;
@@ -45,12 +45,12 @@ fn parse_subset(s: &str) -> IResult<&str, Subset> {
 }
 
 fn parse_game(s: &str) -> IResult<&str, Game> {
-    let (s, _) = tag("Game ")(s)?;
-    let (s, id) = u32(s)?;
-    let (s, _) = tag(":")(s)?;
+    let game_id_parser = delimited(tag("Game "), u32, tag(":"));
+    let subsets_parser = separated_list1(tag(";"), parse_subset);
+    let parser = pair(game_id_parser, subsets_parser);
 
-    let (s, subsets) = separated_list1(tag(";"), parse_subset)(s)?;
-    IResult::Ok((s, Game { id, subsets }))
+    let mut x = map(parser, |(id, subsets)| Game { id, subsets });
+    x(s)
 }
 
 impl FromStr for Game {
