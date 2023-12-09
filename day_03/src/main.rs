@@ -1,93 +1,124 @@
-use std::ops::Range;
+use itertools::Itertools;
+use std::{collections::HashMap, ops::Range, usize};
 
-use regex::{Match, Regex};
+use regex::Regex;
 
-struct Position {
-    line: usize,
-    col: usize,
-}
+#[derive(Hash, Clone, Copy, PartialEq, Eq)]
+struct Position(usize, usize);
 
-struct Occupation {
-    line: usize,
-    range: Range<usize>,
-}
-
-impl Occupation {
-    fn from_match(m: &Match, line_length: usize) -> Self {
-        let line = m.start() / line_length;
-        let start = (m.start() - line) % line_length; // "- line" is eliminating the newline characters
-        Self {
-            line,
-            range: start..start + m.len(),
-        }
+impl Position {
+    fn new(index: usize, line_length: usize) -> Position {
+        Position(index % line_length, index / line_length)
     }
-}
-
-struct OccupationNeighborIterator {
-    occupation: Occupation,
-    last_position: Position,
-}
-
-impl Iterator for OccupationNeighborIterator {
-    type Item = Position;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.occupation.line == self.last_position.line
-            && self.occupation.range.start == self.last_position.col
-        {
-            // First call
-            let new_col = self
-                .occupation
-                .range
-                .start
-                .checked_sub(1)
-                .unwrap_or(self.occupation.range.start);
-            let new_line = self
-                .occupation
-                .line
-                .checked_sub(1)
-                .unwrap_or(self.occupation.line);
-            let new_position = Position {
-                col: new_col,
-                line: new_line,
-            };
-            if new_position == self.last_position {
-                // Edge case: The number starts in the top left corner of the field
-                Some(Position {
-                    col: self.occupation.range.end,
-                    line: self.last_position.line,
-                })
-            } else {
-                Some(new_position)
+    fn neighbors(&self) -> Vec<Position> {
+        let mut v = vec![
+            Position(self.0 + 1, self.1),
+            Position(self.0 + 1, self.1 + 1),
+            Position(self.0, self.1 + 1),
+        ];
+        if self.0 > 0 {
+            v.push(Position(self.0 - 1, self.1));
+            v.push(Position(self.0 - 1, self.1 + 1));
+            if self.1 > 0 {
+                v.push(Position(self.0 - 1, self.1 - 1));
             }
         }
-        None
+        if self.1 > 0 {
+            v.push(Position(self.0, self.1 - 1));
+            v.push(Position(self.0 + 1, self.1 - 1));
+        }
+        v
+    }
+    fn index(&self, line_length: usize) -> usize {
+        self.1 * line_length + self.0
     }
 }
 
-enum Thing {
-    Character(Position),
-    Number(Position, u32),
+fn neighbors(range: &Range<usize>, line_length: usize) -> Vec<Position> {
+    range
+        .to_owned()
+        .flat_map(|index| Position::new(index, line_length).neighbors())
+        .unique()
+        .collect()
 }
 
 fn main() {
-    let input = include_str!("../data/demo_input.txt");
+    let input = include_str!("../data/input.txt");
+    let line_length = input.find('\n').unwrap() + 1;
 
-    let line_length = input.find('\n').unwrap();
-
-    let rx = Regex::new(r"(\d+)|([^\.\n])").unwrap();
-    let (numbers, characters): (Vec<_>, Vec<_>) = rx
-        .captures_iter(input)
-        .map(|c| {
-            if let Some(number_match) = c.get(1) {
-                let value = number_match.as_str().parse::<u32>().unwrap();
-                let position = Position::from_match(number_match, line_length);
-                Thing::Number(position, value)
-            } else {
-                let character_match = c.get(2).unwrap();
-                let position = Position::from_match(character_match, line_length);
-                Thing::Character(position)
-            }
+    let characters = input
+        .chars()
+        .enumerate()
+        .filter(|(_, c)| match c {
+            '.' => false,
+            '0'..='9' => false,
+            '\n' => false,
+            _ => true,
         })
-        .partition(|thing| matches!(thing, Thing::Number(_, _)));
+        .map(|(index, c)| (Position::new(index, line_length), c))
+        .collect::<HashMap<_, _>>();
+
+    let rx = Regex::new(r"(\d+)").unwrap();
+    let numbers = rx
+        .captures_iter(input)
+        .filter_map(|caputres| {
+            caputres
+                .get(1)
+                .map(|m| (m.range(), m.as_str().parse::<u32>().unwrap()))
+        })
+        .collect::<Vec<_>>();
+
+    let sum = numbers
+        .iter()
+        .filter(|(range, _)| {
+            neighbors(range, line_length)
+                .iter()
+                .any(|pos| characters.get(pos).is_some())
+        })
+        .map(|(_, number)| number)
+        .sum::<u32>();
+
+    println!("The sum of the part numbers is {sum}.");
+
+    fn find_number(index: usize, numbers: &Vec<(Range<usize>, u32)>) -> Option<u32> {
+        numbers
+            .iter()
+            .filter_map(|(range, number)| {
+                if range.contains(&index) {
+                    Some(*number)
+                } else {
+                    None
+                }
+            })
+            .next()
+    }
+
+    fn product(
+        pos: Position,
+        numbers: &Vec<(Range<usize>, u32)>,
+        line_length: usize,
+    ) -> Option<u32> {
+        let part_numbers = pos
+            .neighbors()
+            .iter()
+            .filter_map(|pos| {
+                let pos_index = pos.index(line_length);
+                find_number(pos_index, &numbers)
+            })
+            .unique()
+            .collect::<Vec<u32>>();
+        if part_numbers.len() < 2 {
+            None
+        } else {
+            Some(part_numbers.iter().product())
+        }
+    }
+
+    let x = characters
+        .iter()
+        .filter_map(|(pos, c)| if *c == '*' { Some(pos) } else { None })
+        .filter_map(|pos| product(*pos, &numbers, line_length))
+        .sum::<u32>();
+
+    println!("{}", x)
 }
