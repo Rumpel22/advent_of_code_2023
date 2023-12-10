@@ -16,7 +16,7 @@ impl Map {
 }
 
 fn get_seeds(s: &str) -> Vec<u64> {
-    let first_line = s.lines().nth(0).unwrap();
+    let first_line = s.lines().next().unwrap();
     first_line[7..]
         .split(' ')
         .map(|s| s.parse::<u64>().unwrap())

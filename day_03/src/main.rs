@@ -49,12 +49,7 @@ fn main() {
     let characters = input
         .chars()
         .enumerate()
-        .filter(|(_, c)| match c {
-            '.' => false,
-            '0'..='9' => false,
-            '\n' => false,
-            _ => true,
-        })
+        .filter(|(_, c)| !matches!(c, '.' | '0'..='9' | '\n'))
         .map(|(index, c)| (Position::new(index, line_length), c))
         .collect::<HashMap<_, _>>();
 
@@ -80,7 +75,7 @@ fn main() {
 
     println!("The sum of the part numbers is {sum}.");
 
-    fn find_number(index: usize, numbers: &Vec<(Range<usize>, u32)>) -> Option<u32> {
+    fn find_number(index: usize, numbers: &[(Range<usize>, u32)]) -> Option<u32> {
         numbers
             .iter()
             .filter_map(|(range, number)| {
@@ -93,17 +88,13 @@ fn main() {
             .next()
     }
 
-    fn product(
-        pos: Position,
-        numbers: &Vec<(Range<usize>, u32)>,
-        line_length: usize,
-    ) -> Option<u32> {
+    fn product(pos: Position, numbers: &[(Range<usize>, u32)], line_length: usize) -> Option<u32> {
         let part_numbers = pos
             .neighbors()
             .iter()
             .filter_map(|pos| {
                 let pos_index = pos.index(line_length);
-                find_number(pos_index, &numbers)
+                find_number(pos_index, numbers)
             })
             .unique()
             .collect::<Vec<u32>>();

@@ -18,7 +18,7 @@ impl Card {
     fn number_of_wins(&self) -> usize {
         self.winning_numbers
             .iter()
-            .filter(|winning_number| self.having_numbers.contains(&winning_number))
+            .filter(|winning_number| self.having_numbers.contains(winning_number))
             .count()
     }
 }
@@ -69,22 +69,18 @@ fn main() {
         .collect::<HashMap<_, _>>();
 
     for card_id in 1..=max_card_id {
-        let card = cards
-            .iter()
-            .filter(|card| card.id == card_id)
-            .next()
-            .unwrap();
+        let card = cards.iter().find(|card| card.id == card_id).unwrap();
         let wins = card.number_of_wins();
         let card_amount = *card_total.get(&card_id).unwrap();
 
         for win in card_id + 1..=card_id + (wins as u32) {
             if let Some(x) = card_total.get_mut(&win) {
-                *x = *x + card_amount;
+                *x += card_amount;
             }
         }
     }
 
-    let total_number_of_cards = card_total.iter().map(|(_, count)| count).sum::<usize>();
+    let total_number_of_cards = card_total.values().sum::<usize>();
     println!(
         "At the end, there are {} scratchcards.",
         total_number_of_cards
