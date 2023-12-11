@@ -13,6 +13,42 @@ impl Map {
             input
         }
     }
+
+    fn map_range(&self, range: &Range<u64>) -> Vec<Range<u64>> {
+        if range.is_empty() {
+            return vec![];
+        }
+
+        if let Some(entry) = self
+            .entries
+            .iter()
+            .find(|entry| entry.0.contains(&range.start))
+        {
+            let offset = range.start - entry.0.start;
+            let start = entry.1 + offset;
+
+            let entry_length = entry.0.end - entry.0.start;
+            let range_length = range.end - range.start;
+            let end = start + entry_length.min(range_length);
+            let mut new_ranges = vec![start..end];
+            new_ranges.append(&mut self.map_range(&(range.start + offset..range.end)));
+            return new_ranges;
+        }
+
+        // start of range does not match into map
+        if let Some(followup_entry) = self
+            .entries
+            .iter()
+            .filter(|entry| entry.0.start > range.start)
+            .next()
+        {
+            let mut new_ranges = vec![range.start..followup_entry.0.start];
+            new_ranges.append(&mut self.map_range(&(followup_entry.0.start..range.end)));
+            return new_ranges;
+        };
+
+        vec![range.clone()]
+    }
 }
 
 fn get_seeds(s: &str) -> Vec<u64> {
@@ -20,6 +56,15 @@ fn get_seeds(s: &str) -> Vec<u64> {
     first_line[7..]
         .split(' ')
         .map(|s| s.parse::<u64>().unwrap())
+        .collect()
+}
+
+fn get_seeds_ranges(s: &str) -> Vec<Range<u64>> {
+    let numbers = get_seeds(s);
+    numbers
+        .windows(2)
+        .step_by(2)
+        .map(|range| range[0]..(range[0] + range[1]))
         .collect()
 }
 
@@ -43,7 +88,7 @@ fn get_map(s: &str, from: &str, to: &str) -> Map {
 }
 
 fn main() {
-    let input = include_str!("../data/input.txt");
+    let input = include_str!("../data/demo_input.txt");
     let seeds = get_seeds(input);
     let seed_to_soil_map = get_map(input, "seed", "soil");
     let soil_to_fertilizer_map = get_map(input, "soil", "fertilizer");
@@ -65,5 +110,20 @@ fn main() {
         .collect::<Vec<_>>();
 
     let minimum_location = locations.iter().min().unwrap();
+    println!("The minimum location is at {}.", minimum_location);
+
+    let seeds_ranges = get_seeds_ranges(input);
+    let locations = seeds_ranges
+        .iter()
+        .flat_map(|seeds| seed_to_soil_map.map_range(&seeds))
+        .flat_map(|soils| soil_to_fertilizer_map.map_range(&soils))
+        .flat_map(|fertilizers| fertilizer_to_water_map.map_range(&fertilizers))
+        .flat_map(|waters| water_to_light_map.map_range(&waters))
+        .flat_map(|lights| light_to_temperature_map.map_range(&lights))
+        .flat_map(|temperatures| temperature_to_humidity_map.map_range(&temperatures))
+        .flat_map(|humiditys| humidity_to_location_map.map_range(&humiditys))
+        .collect::<Vec<_>>();
+
+    let minimum_location = locations.iter().map(|range| range.start).min().unwrap();
     println!("The minimum location is at {}.", minimum_location);
 }
