@@ -1,14 +1,22 @@
 use std::ops::Range;
 
+struct Entry {
+    source: Range<u64>,
+    destination: Range<u64>,
+}
 struct Map {
-    entries: Vec<(Range<u64>, u64)>,
+    entries: Vec<Entry>,
 }
 
 impl Map {
     fn map(&self, input: u64) -> u64 {
-        if let Some(entry) = self.entries.iter().find(|entry| entry.0.contains(&input)) {
-            let offset = input - entry.0.start;
-            entry.1 + offset
+        if let Some(entry) = self
+            .entries
+            .iter()
+            .find(|entry| entry.source.contains(&input))
+        {
+            let offset = input - entry.source.start;
+            entry.destination.start + offset
         } else {
             input
         }
@@ -22,16 +30,20 @@ impl Map {
         if let Some(entry) = self
             .entries
             .iter()
-            .find(|entry| entry.0.contains(&range.start))
+            .find(|entry| entry.source.contains(&range.start))
         {
-            let offset = range.start - entry.0.start;
-            let start = entry.1 + offset;
-
-            let entry_length = entry.0.end - entry.0.start;
             let range_length = range.end - range.start;
-            let end = start + entry_length.min(range_length);
-            let mut new_ranges = vec![start..end];
-            new_ranges.append(&mut self.map_range(&(range.start + offset..range.end)));
+
+            let offset = range.start - entry.source.start;
+            let mapped_start = entry.destination.start + offset;
+            let mapped_end = mapped_start + range_length;
+            let mapped_end = entry.destination.end.min(mapped_end);
+
+            let mut new_ranges = vec![mapped_start..mapped_end];
+            let mapped_length = mapped_end - mapped_start;
+            if mapped_length < range_length {
+                new_ranges.append(&mut self.map_range(&(range.start + mapped_length..range.end)));
+            }
             return new_ranges;
         }
 
@@ -39,11 +51,11 @@ impl Map {
         if let Some(followup_entry) = self
             .entries
             .iter()
-            .filter(|entry| entry.0.start > range.start)
-            .next()
+            .filter(|entry| entry.source.start > range.start)
+            .min_by(|entry1, entry2| entry1.source.start.cmp(&entry2.source.start))
         {
-            let mut new_ranges = vec![range.start..followup_entry.0.start];
-            new_ranges.append(&mut self.map_range(&(followup_entry.0.start..range.end)));
+            let mut new_ranges = vec![range.start..followup_entry.source.start];
+            new_ranges.append(&mut self.map_range(&(followup_entry.source.start..range.end)));
             return new_ranges;
         };
 
@@ -68,12 +80,15 @@ fn get_seeds_ranges(s: &str) -> Vec<Range<u64>> {
         .collect()
 }
 
-fn get_map_entry(s: &str) -> (Range<u64>, u64) {
+fn get_map_entry(s: &str) -> Entry {
     let mut parts = s.split(' ');
     let to = parts.next().unwrap().parse::<u64>().unwrap();
     let from = parts.next().unwrap().parse::<u64>().unwrap();
     let length = parts.next().unwrap().parse::<u64>().unwrap();
-    (from..from + length, to)
+    Entry {
+        source: from..from + length,
+        destination: to..to + length,
+    }
 }
 
 fn get_map(s: &str, from: &str, to: &str) -> Map {
@@ -88,7 +103,7 @@ fn get_map(s: &str, from: &str, to: &str) -> Map {
 }
 
 fn main() {
-    let input = include_str!("../data/demo_input.txt");
+    let input = include_str!("../data/input.txt");
     let seeds = get_seeds(input);
     let seed_to_soil_map = get_map(input, "seed", "soil");
     let soil_to_fertilizer_map = get_map(input, "soil", "fertilizer");
