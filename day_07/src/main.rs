@@ -19,7 +19,7 @@ enum Card {
 }
 
 #[derive(Debug, Ord, PartialEq, Eq, Clone, Copy, PartialOrd)]
-enum Type {
+enum Strength {
     Five,
     Four,
     FullHouse,
@@ -30,10 +30,7 @@ enum Type {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Ord, Eq)]
-struct Hand {
-    cards: [Card; 5],
-    type_: Type,
-}
+struct Hand([Card; 5]);
 
 impl FromStr for Hand {
     type Err = ();
@@ -61,44 +58,44 @@ impl FromStr for Hand {
             .try_into()
             .unwrap();
 
-        Ok(Self {
-            cards,
-            type_: type_(&cards),
-        })
+        Ok(Self(cards))
     }
 }
 
 impl PartialOrd for Hand {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
-        match self.type_.partial_cmp(&other.type_) {
-            Some(core::cmp::Ordering::Equal) => self.cards.partial_cmp(&other.cards),
+        match self.strength().partial_cmp(&other.strength()) {
+            Some(core::cmp::Ordering::Equal) => self.0.partial_cmp(&other.0),
             ord => ord,
         }
     }
 }
 
-fn type_(cards: &[Card]) -> Type {
-    let cards: Vec<_> = cards
-        .iter()
-        .sorted()
-        .dedup_with_count()
-        .sorted_by(
-            |(count1, card1), (count2, card2)| match count2.cmp(count1) {
-                std::cmp::Ordering::Equal => card1.cmp(card2),
-                c => c,
-            },
-        )
-        .collect_vec();
+impl Hand {
+    fn strength(&self) -> Strength {
+        let cards: Vec<_> = self
+            .0
+            .iter()
+            .sorted()
+            .dedup_with_count()
+            .sorted_by(
+                |(count1, card1), (count2, card2)| match count2.cmp(count1) {
+                    std::cmp::Ordering::Equal => card1.cmp(card2),
+                    c => c,
+                },
+            )
+            .collect_vec();
 
-    match cards[0] {
-        (5, _) => Type::Five,
-        (4, _) => Type::Four,
-        (3, _) if cards[1].0 == 2 => Type::FullHouse,
-        (3, _) => Type::Three,
-        (2, _) if cards[1].0 == 2 => Type::TwoPair,
-        (2, _) => Type::Pair,
-        (1, _) => Type::HighCard,
-        _ => unreachable!(),
+        match cards[0] {
+            (5, _) => Strength::Five,
+            (4, _) => Strength::Four,
+            (3, _) if cards[1].0 == 2 => Strength::FullHouse,
+            (3, _) => Strength::Three,
+            (2, _) if cards[1].0 == 2 => Strength::TwoPair,
+            (2, _) => Strength::Pair,
+            (1, _) => Strength::HighCard,
+            _ => unreachable!(),
+        }
     }
 }
 
