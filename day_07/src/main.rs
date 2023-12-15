@@ -6,7 +6,8 @@ enum Card {
     Ace,
     King,
     Queen,
-    Jack,
+
+    // Jack,
     Ten,
     Nine,
     Eight,
@@ -16,6 +17,8 @@ enum Card {
     Four,
     Three,
     Two,
+
+    Jack,
 }
 
 #[derive(Debug, Ord, PartialEq, Eq, Clone, Copy, PartialOrd)]
@@ -86,6 +89,8 @@ impl Hand {
             )
             .collect_vec();
 
+        let cards = enhance_with_jokers(cards);
+
         match cards[0] {
             (5, _) => Strength::Five,
             (4, _) => Strength::Four,
@@ -99,8 +104,22 @@ impl Hand {
     }
 }
 
+fn enhance_with_jokers(cards: Vec<(usize, &Card)>) -> Vec<(usize, &Card)> {
+    let (jokers, mut cards): (Vec<_>, Vec<_>) =
+        cards.iter().partition(|card| card.1 == &Card::Jack);
+    if jokers.is_empty() {
+        return cards;
+    }
+    if cards.is_empty() {
+        return jokers;
+    }
+    cards[0].0 += jokers[0].0;
+    return cards;
+}
+
 fn main() {
     let input = include_str!("../data/input.txt");
+
     let hands_bids = input
         .lines()
         .map(|line| {
