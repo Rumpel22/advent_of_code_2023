@@ -114,7 +114,7 @@ fn enhance_with_jokers(cards: Vec<(usize, &Card)>) -> Vec<(usize, &Card)> {
         return jokers;
     }
     cards[0].0 += jokers[0].0;
-    return cards;
+    cards
 }
 
 fn main() {

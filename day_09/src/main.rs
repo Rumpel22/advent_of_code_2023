@@ -32,7 +32,7 @@ fn main() {
     let data_histories = input
         .lines()
         .map(|line| {
-            line.split(" ")
+            line.split(' ')
                 .map(|number| number.parse::<i32>().unwrap())
                 .collect::<Vec<_>>()
         })

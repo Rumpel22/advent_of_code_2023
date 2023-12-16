@@ -130,7 +130,7 @@ fn main() {
     let seeds_ranges = get_seeds_ranges(input);
     let locations = seeds_ranges
         .iter()
-        .flat_map(|seeds| seed_to_soil_map.map_range(&seeds))
+        .flat_map(|seeds| seed_to_soil_map.map_range(seeds))
         .flat_map(|soils| soil_to_fertilizer_map.map_range(&soils))
         .flat_map(|fertilizers| fertilizer_to_water_map.map_range(&fertilizers))
         .flat_map(|waters| water_to_light_map.map_range(&waters))

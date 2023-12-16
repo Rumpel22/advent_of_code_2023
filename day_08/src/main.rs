@@ -22,7 +22,7 @@ fn get_map(input: &str) -> HashMap<Field, (Field, Field)> {
         .collect()
 }
 
-fn get_steps(start: &str, directions: &Vec<Direction>, map: &HashMap<&str, (&str, &str)>) -> usize {
+fn get_steps(start: &str, directions: &[Direction], map: &HashMap<&str, (&str, &str)>) -> usize {
     directions
         .iter()
         .cycle()
@@ -35,7 +35,7 @@ fn get_steps(start: &str, directions: &Vec<Direction>, map: &HashMap<&str, (&str
             Some(next)
         })
         // It's not the correct end condition for part 1, but it works for part 1 and 2
-        .take_while(|current| !current.ends_with("Z"))
+        .take_while(|current| !current.ends_with('Z'))
         .count()
         + 1
 }
@@ -58,7 +58,7 @@ fn main() {
     let count = get_steps("AAA", &directions, &field_map);
     println!("It takes {count} steps.");
 
-    let starts = field_map.keys().filter(|key| key.ends_with("A"));
+    let starts = field_map.keys().filter(|key| key.ends_with('A'));
     let counts = starts
         .map(|start| get_steps(start, &directions, &field_map))
         .collect::<Vec<_>>();

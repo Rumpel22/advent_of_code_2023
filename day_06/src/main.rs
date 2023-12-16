@@ -53,8 +53,8 @@ fn main() {
     println!("The product of the valid solution counts is {product}.");
 
     let mut lines = input.lines();
-    let time_line = lines.next().unwrap().split(":").skip(1).next().unwrap();
-    let distance_line = lines.next().unwrap().split(":").skip(1).next().unwrap();
+    let time_line = lines.next().unwrap().split(':').nth(1).unwrap();
+    let distance_line = lines.next().unwrap().split(':').nth(1).unwrap();
     let time: String = time_line
         .chars()
         .filter(|c| !c.is_ascii_whitespace())
