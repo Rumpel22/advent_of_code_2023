@@ -9,12 +9,21 @@ fn differences(data: &[i32]) -> Vec<i32> {
         .collect()
 }
 
-fn extrapolate(data: &[i32]) -> i32 {
+fn extrapolate_next(data: &[i32]) -> i32 {
     let diffs = differences(data);
     if diffs.iter().all(|diff| diff == &0) {
         data[0]
     } else {
-        data.last().unwrap() + extrapolate(&diffs)
+        data.last().unwrap() + extrapolate_next(&diffs)
+    }
+}
+
+fn extrapolate_previous(data: &[i32]) -> i32 {
+    let diffs = differences(data);
+    if diffs.iter().all(|diff| diff == &0) {
+        data[0]
+    } else {
+        data.first().unwrap() - extrapolate_previous(&diffs)
     }
 }
 
@@ -31,8 +40,15 @@ fn main() {
 
     let extrapolated_data_sum = data_histories
         .iter()
-        .map(|data| extrapolate(data))
+        .map(|data| extrapolate_next(data))
         .sum::<i32>();
 
-    println!("The sum of the interpolated values is {extrapolated_data_sum}.");
+    println!("The sum of the next interpolated values is {extrapolated_data_sum}.");
+
+    let extrapolated_data_sum = data_histories
+        .iter()
+        .map(|data| extrapolate_previous(data))
+        .sum::<i32>();
+
+    println!("The sum of the previous interpolated values is {extrapolated_data_sum}.");
 }
