@@ -154,7 +154,7 @@ impl Iterator for MapWalker<'_> {
 }
 
 fn main() {
-    let input = include_str!("../data/input.txt");
+    let input = include_str!("../data/demo_input4.txt");
     let map = input.parse::<Map>().unwrap();
 
     let start_position = map.get_start();
@@ -210,4 +210,51 @@ fn main() {
         steps,
         steps / 2
     );
+    let min_y = path_fields
+        .iter()
+        .map(|coordinate| coordinate.y)
+        .min()
+        .unwrap();
+    let max_y = path_fields
+        .iter()
+        .map(|coordinate| coordinate.y)
+        .max()
+        .unwrap();
+
+    let count = (min_y..=max_y)
+        .map(|y| {
+            let min_x = path_fields
+                .iter()
+                .filter(|coordinate| coordinate.y == y)
+                .map(|coordinate| coordinate.x)
+                .min()
+                .unwrap();
+            let max_x = path_fields
+                .iter()
+                .filter(|coordinate| coordinate.y == y)
+                .map(|coordinate| coordinate.x)
+                .max()
+                .unwrap();
+
+            (min_x..=max_x)
+                .map(move |x| Coordinate { x, y })
+                .scan(false, |state, coordinate| {
+                    if path_fields.contains(&coordinate) {
+                        let pipe = map.get(coordinate).unwrap();
+                        if pipe != Pipe::Horizontal {
+                            *state = !*state;
+                        }
+                        return Some(false);
+                    };
+                    if *state {
+                        println!("{coordinate:?}");
+                    }
+                    Some(*state)
+                })
+                .filter(|state| *state)
+                .count()
+        })
+        .sum::<usize>();
+
+    println!("There are {count} fields within the loop."); // 1408 too high
 }
