@@ -165,7 +165,7 @@ fn main() {
         Direction::Down,
     ];
 
-    let x = directions
+    let path_fields = directions
         .iter()
         .filter(|direction| {
             if let Some(field) = start_position.get(**direction) {
@@ -196,17 +196,18 @@ fn main() {
             }
             false
         })
-        .find_map(|direction| {
-            if let Some(result) = map
-                .iter(start_position, *direction)
-                .enumerate()
-                .take_while(|(_, coordinate)| coordinate != &start_position)
-                .last()
-            {
-                return Some(result.0 + 2);
-            }
-            None
+        .map(|direction| {
+            map.iter(start_position, *direction)
+                .take_while(|coordinate| coordinate != &start_position)
+                .collect::<Vec<_>>()
         })
+        .nth(0)
         .unwrap();
-    println!("It takes {x} steps. The maximum distance is {}.", x / 2);
+
+    let steps = path_fields.len() + 1;
+    println!(
+        "It takes {} steps. The maximum distance is {}.",
+        steps,
+        steps / 2
+    );
 }
