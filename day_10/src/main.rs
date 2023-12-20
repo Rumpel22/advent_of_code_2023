@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 #[derive(PartialEq, Copy, Clone)]
-enum Pipe {
+enum MapTile {
     Vertical,
     Horizontal,
     NorthEast,
@@ -12,8 +12,8 @@ enum Pipe {
     Start,
 }
 
-struct Map {
-    fields: Vec<Pipe>,
+struct Map<T> {
+    fields: Vec<T>,
     height: usize,
     width: usize,
 }
@@ -56,7 +56,7 @@ impl Coordinate {
     }
 }
 
-impl FromStr for Map {
+impl FromStr for Map<MapTile> {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -65,14 +65,14 @@ impl FromStr for Map {
             .flat_map(|line| {
                 line.chars()
                     .map(|c| match c {
-                        '|' => Pipe::Vertical,
-                        '-' => Pipe::Horizontal,
-                        'L' => Pipe::NorthEast,
-                        'J' => Pipe::NorthWest,
-                        '7' => Pipe::SouthWest,
-                        'F' => Pipe::SouthEast,
-                        '.' => Pipe::Ground,
-                        'S' => Pipe::Start,
+                        '|' => MapTile::Vertical,
+                        '-' => MapTile::Horizontal,
+                        'L' => MapTile::NorthEast,
+                        'J' => MapTile::NorthWest,
+                        '7' => MapTile::SouthWest,
+                        'F' => MapTile::SouthEast,
+                        '.' => MapTile::Ground,
+                        'S' => MapTile::Start,
                         _ => unreachable!(),
                     })
                     .collect::<Vec<_>>()
@@ -88,19 +88,22 @@ impl FromStr for Map {
     }
 }
 
-impl Map {
+impl Map<MapTile> {
     fn get_start(&self) -> Coordinate {
         let index = self
             .fields
             .iter()
-            .position(|pipe| pipe == &Pipe::Start)
+            .position(|pipe| pipe == &MapTile::Start)
             .unwrap();
         Coordinate {
             x: index % self.width,
             y: index / self.width,
         }
     }
-    fn get(&self, coordinate: Coordinate) -> Option<Pipe> {
+}
+
+impl<T: PartialEq + Copy> Map<T> {
+    fn get(&self, coordinate: Coordinate) -> Option<T> {
         if !(0..self.width).contains(&coordinate.x) || !(0..self.height).contains(&coordinate.y) {
             return None;
         }
@@ -109,7 +112,7 @@ impl Map {
             .copied()
     }
 
-    fn iter(&self, coordinate: Coordinate, direction: Direction) -> MapWalker {
+    fn iter(&self, coordinate: Coordinate, direction: Direction) -> MapWalker<T> {
         MapWalker {
             map: &self,
             coordinate,
@@ -118,31 +121,31 @@ impl Map {
     }
 }
 
-struct MapWalker<'a> {
+struct MapWalker<'a, T> {
     coordinate: Coordinate,
     direction: Direction,
-    map: &'a Map,
+    map: &'a Map<T>,
 }
 
-impl Iterator for MapWalker<'_> {
+impl Iterator for MapWalker<'_, MapTile> {
     type Item = Coordinate;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(candidate) = self.coordinate.get(self.direction) {
             if let Some(pipe) = self.map.get(candidate) {
                 let direction = match pipe {
-                    Pipe::Vertical => self.direction,
-                    Pipe::Horizontal => self.direction,
-                    Pipe::NorthEast if self.direction == Direction::Down => Direction::Right,
-                    Pipe::NorthEast => Direction::Up,
-                    Pipe::NorthWest if self.direction == Direction::Down => Direction::Left,
-                    Pipe::NorthWest => Direction::Up,
-                    Pipe::SouthWest if self.direction == Direction::Up => Direction::Left,
-                    Pipe::SouthWest => Direction::Down,
-                    Pipe::SouthEast if self.direction == Direction::Up => Direction::Right,
-                    Pipe::SouthEast => Direction::Down,
-                    Pipe::Ground => return None,
-                    Pipe::Start => self.direction,
+                    MapTile::Vertical => self.direction,
+                    MapTile::Horizontal => self.direction,
+                    MapTile::NorthEast if self.direction == Direction::Down => Direction::Right,
+                    MapTile::NorthEast => Direction::Up,
+                    MapTile::NorthWest if self.direction == Direction::Down => Direction::Left,
+                    MapTile::NorthWest => Direction::Up,
+                    MapTile::SouthWest if self.direction == Direction::Up => Direction::Left,
+                    MapTile::SouthWest => Direction::Down,
+                    MapTile::SouthEast if self.direction == Direction::Up => Direction::Right,
+                    MapTile::SouthEast => Direction::Down,
+                    MapTile::Ground => return None,
+                    MapTile::Start => self.direction,
                 };
                 self.coordinate = candidate;
                 self.direction = direction;
@@ -155,7 +158,7 @@ impl Iterator for MapWalker<'_> {
 
 fn main() {
     let input = include_str!("../data/demo_input4.txt");
-    let map = input.parse::<Map>().unwrap();
+    let map = input.parse::<Map<MapTile>>().unwrap();
 
     let start_position = map.get_start();
     let directions = [
@@ -172,24 +175,24 @@ fn main() {
                 if let Some(pipe) = map.get(field) {
                     return match direction {
                         Direction::Left => {
-                            pipe == Pipe::Horizontal
-                                || pipe == Pipe::NorthEast
-                                || pipe == Pipe::SouthEast
+                            pipe == MapTile::Horizontal
+                                || pipe == MapTile::NorthEast
+                                || pipe == MapTile::SouthEast
                         }
                         Direction::Right => {
-                            pipe == Pipe::Horizontal
-                                || pipe == Pipe::NorthWest
-                                || pipe == Pipe::SouthWest
+                            pipe == MapTile::Horizontal
+                                || pipe == MapTile::NorthWest
+                                || pipe == MapTile::SouthWest
                         }
                         Direction::Up => {
-                            pipe == Pipe::Vertical
-                                || pipe == Pipe::SouthWest
-                                || pipe == Pipe::SouthEast
+                            pipe == MapTile::Vertical
+                                || pipe == MapTile::SouthWest
+                                || pipe == MapTile::SouthEast
                         }
                         Direction::Down => {
-                            pipe == Pipe::Vertical
-                                || pipe == Pipe::NorthWest
-                                || pipe == Pipe::NorthEast
+                            pipe == MapTile::Vertical
+                                || pipe == MapTile::NorthWest
+                                || pipe == MapTile::NorthEast
                         }
                     };
                 }
@@ -220,41 +223,16 @@ fn main() {
         .map(|coordinate| coordinate.y)
         .max()
         .unwrap();
+    let min_x = path_fields
+        .iter()
+        .map(|coordinate| coordinate.x)
+        .min()
+        .unwrap();
+    let max_x = path_fields
+        .iter()
+        .map(|coordinate| coordinate.x)
+        .max()
+        .unwrap();
 
-    let count = (min_y..=max_y)
-        .map(|y| {
-            let min_x = path_fields
-                .iter()
-                .filter(|coordinate| coordinate.y == y)
-                .map(|coordinate| coordinate.x)
-                .min()
-                .unwrap();
-            let max_x = path_fields
-                .iter()
-                .filter(|coordinate| coordinate.y == y)
-                .map(|coordinate| coordinate.x)
-                .max()
-                .unwrap();
-
-            (min_x..=max_x)
-                .map(move |x| Coordinate { x, y })
-                .scan(false, |state, coordinate| {
-                    if path_fields.contains(&coordinate) {
-                        let pipe = map.get(coordinate).unwrap();
-                        if pipe != Pipe::Horizontal {
-                            *state = !*state;
-                        }
-                        return Some(false);
-                    };
-                    if *state {
-                        println!("{coordinate:?}");
-                    }
-                    Some(*state)
-                })
-                .filter(|state| *state)
-                .count()
-        })
-        .sum::<usize>();
-
-    println!("There are {count} fields within the loop."); // 1408 too high
+    // println!("There are {count} fields within the loop."); // 1408 too high
 }
