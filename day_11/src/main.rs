@@ -2,11 +2,13 @@ use std::str::FromStr;
 
 use itertools::iproduct;
 
+#[derive(Clone)]
 struct Position {
     x: usize,
     y: usize,
 }
 
+#[derive(Clone)]
 struct Space {
     galaxies: Vec<Position>,
     height: usize,
@@ -39,7 +41,7 @@ impl FromStr for Space {
 }
 
 impl Space {
-    fn expand(mut self) -> Self {
+    fn expand(mut self, expansion: usize) -> Self {
         let empty_rows = self.empty_rows();
         let empty_columns = self.empty_columns();
         let height = self.height + empty_rows.len();
@@ -49,13 +51,13 @@ impl Space {
             self.galaxies
                 .iter_mut()
                 .filter(|galaxy| galaxy.y > *row_index)
-                .for_each(|galaxy| galaxy.y += 1)
+                .for_each(|galaxy| galaxy.y += expansion)
         });
         empty_columns.iter().for_each(|column_index| {
             self.galaxies
                 .iter_mut()
                 .filter(|galaxy| galaxy.x > *column_index)
-                .for_each(|galaxy| galaxy.x += 1)
+                .for_each(|galaxy| galaxy.x += expansion)
         });
         Self {
             height,
@@ -91,12 +93,24 @@ impl Space {
 fn main() {
     let input = include_str!("../data/input.txt");
     let space = input.parse::<Space>().unwrap();
-    let space = space.expand();
+    {
+        let space = space.clone().expand(1);
 
-    let sum_distances = iproduct!(0..space.num_galaxies(), 0..space.num_galaxies())
-        .filter(|(galaxy_1, galaxy2)| galaxy_1 < galaxy2)
-        .map(|(galaxy1, galaxy2)| space.galaxy_distance(galaxy1, galaxy2))
-        .sum::<usize>();
+        let sum_distances = iproduct!(0..space.num_galaxies(), 0..space.num_galaxies())
+            .filter(|(galaxy_1, galaxy2)| galaxy_1 < galaxy2)
+            .map(|(galaxy1, galaxy2)| space.galaxy_distance(galaxy1, galaxy2))
+            .sum::<usize>();
 
-    println!("The sum of the distances is {sum_distances:?}.");
+        println!("The sum of the distances is {sum_distances:?}.");
+    }
+    {
+        let space = space.clone().expand(1000000 - 1);
+
+        let sum_distances = iproduct!(0..space.num_galaxies(), 0..space.num_galaxies())
+            .filter(|(galaxy_1, galaxy2)| galaxy_1 < galaxy2)
+            .map(|(galaxy1, galaxy2)| space.galaxy_distance(galaxy1, galaxy2))
+            .sum::<usize>();
+
+        println!("The sum of the distances is {sum_distances:?}."); // 857987707407
+    }
 }
