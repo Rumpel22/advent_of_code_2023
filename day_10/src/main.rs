@@ -12,8 +12,8 @@ enum MapTile {
     Start,
 }
 
-struct Map<T> {
-    fields: Vec<T>,
+struct Map {
+    fields: Vec<MapTile>,
     height: usize,
     width: usize,
 }
@@ -56,7 +56,7 @@ impl Coordinate {
     }
 }
 
-impl FromStr for Map<MapTile> {
+impl FromStr for Map {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -88,7 +88,7 @@ impl FromStr for Map<MapTile> {
     }
 }
 
-impl Map<MapTile> {
+impl Map {
     fn get_start(&self) -> Coordinate {
         let index = self
             .fields
@@ -100,10 +100,7 @@ impl Map<MapTile> {
             y: index / self.width,
         }
     }
-}
-
-impl<T: PartialEq + Copy> Map<T> {
-    fn get(&self, coordinate: Coordinate) -> Option<T> {
+    fn get(&self, coordinate: Coordinate) -> Option<MapTile> {
         if !(0..self.width).contains(&coordinate.x) || !(0..self.height).contains(&coordinate.y) {
             return None;
         }
@@ -112,7 +109,7 @@ impl<T: PartialEq + Copy> Map<T> {
             .copied()
     }
 
-    fn iter(&self, coordinate: Coordinate, direction: Direction) -> MapWalker<T> {
+    fn iter(&self, coordinate: Coordinate, direction: Direction) -> MapWalker {
         MapWalker {
             map: &self,
             coordinate,
@@ -121,13 +118,13 @@ impl<T: PartialEq + Copy> Map<T> {
     }
 }
 
-struct MapWalker<'a, T> {
+struct MapWalker<'a> {
     coordinate: Coordinate,
     direction: Direction,
-    map: &'a Map<T>,
+    map: &'a Map,
 }
 
-impl Iterator for MapWalker<'_, MapTile> {
+impl Iterator for MapWalker<'_> {
     type Item = Coordinate;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -158,7 +155,7 @@ impl Iterator for MapWalker<'_, MapTile> {
 
 fn main() {
     let input = include_str!("../data/demo_input4.txt");
-    let map = input.parse::<Map<MapTile>>().unwrap();
+    let map = input.parse::<Map>().unwrap();
 
     let start_position = map.get_start();
     let directions = [
@@ -223,16 +220,41 @@ fn main() {
         .map(|coordinate| coordinate.y)
         .max()
         .unwrap();
-    let min_x = path_fields
-        .iter()
-        .map(|coordinate| coordinate.x)
-        .min()
-        .unwrap();
-    let max_x = path_fields
-        .iter()
-        .map(|coordinate| coordinate.x)
-        .max()
-        .unwrap();
 
-    // println!("There are {count} fields within the loop."); // 1408 too high
+    let count = (min_y..=max_y)
+        .map(|y| {
+            let min_x = path_fields
+                .iter()
+                .filter(|coordinate| coordinate.y == y)
+                .map(|coordinate| coordinate.x)
+                .min()
+                .unwrap();
+            let max_x = path_fields
+                .iter()
+                .filter(|coordinate| coordinate.y == y)
+                .map(|coordinate| coordinate.x)
+                .max()
+                .unwrap();
+
+            (min_x..=max_x)
+                .map(move |x| Coordinate { x, y })
+                .scan(false, |state, coordinate| {
+                    if path_fields.contains(&coordinate) {
+                        let pipe = map.get(coordinate).unwrap();
+                        if pipe != MapTile::Horizontal {
+                            *state = !*state;
+                        }
+                        return Some(false);
+                    };
+                    if *state {
+                        println!("{coordinate:?}");
+                    }
+                    Some(*state)
+                })
+                .filter(|state| *state)
+                .count()
+        })
+        .sum::<usize>();
+
+    println!("There are {count} fields within the loop."); // 1408 too high
 }
