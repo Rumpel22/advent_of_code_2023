@@ -12,39 +12,42 @@ pub struct Row {
 }
 
 fn get_combination_count(springs: &[State], groups: &[usize]) -> usize {
+    if groups.is_empty() {
+        if springs.iter().all(|spring| *spring != State::Damaged) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
     let group = groups[0];
 
     let needed_space = groups.iter().sum::<usize>() + groups.len() - 1;
-    let last_index = springs
-        .iter()
-        .position(|spring| *spring == State::Damaged)
-        .unwrap_or(usize::MAX)
-        .min(springs.len() - needed_space);
+    let last_possible_index = match springs.len().checked_sub(needed_space) {
+        Some(value) => springs
+            .iter()
+            .position(|spring| *spring == State::Damaged)
+            .unwrap_or(value)
+            .min(value),
+        None => return 0,
+    };
 
-    (0..=last_index)
-        .filter(|index| {
-            (*index..*index + group).all(|inner_index| springs[inner_index] != State::Operational)
-                && springs.get(index + group).unwrap_or(&State::Operational) != &State::Damaged
-        })
-        .map(|index| {
-            let spring_index = index + group + 1;
-            if spring_index >= springs.len() {
-                // No more springs
-                if groups.len() == 1 {
-                    return 1;
-                } else {
-                    return 0;
-                }
-            } else if groups.len() > 1 {
-                get_combination_count(&springs[spring_index..], &groups[1..])
-            } else {
-                if springs[spring_index..]
+    (0..=last_possible_index)
+        .map(|index| match springs[index] {
+            State::Operational => 0,
+            _ => {
+                if springs[index..index + group]
                     .iter()
-                    .any(|spring| spring == &State::Damaged)
+                    .all(|spring| *spring != State::Operational)
+                    && springs
+                        .get(index + group)
+                        .map_or(true, |end| *end != State::Damaged)
                 {
-                    return 0;
+                    let next_start = index + group + springs.get(index + group).map_or(0, |_| 1);
+                    get_combination_count(&springs[next_start..], &groups[1..])
+                } else {
+                    0
                 }
-                return 1;
             }
         })
         .sum::<usize>()
@@ -56,13 +59,15 @@ impl Row {
     }
 
     fn get_combination_count_unfolded(&self) -> usize {
-        let springs = iter::repeat(&self.springs)
-            .take(5)
-            .interleave_shortest(iter::repeat(&vec![State::Unknown]).take(4))
-            .flatten()
-            .copied()
-            .collect::<Vec<_>>();
-        get_combination_count(&springs, &self.groups.repeat(5))
+        let x = get_combination_count(&self.springs, &self.groups);
+        let mut springs = self.springs.clone();
+        springs.push(State::Unknown);
+        springs.extend_from_slice(&self.springs);
+        let mut groups = self.groups.clone();
+        groups.extend_from_slice(&self.groups);
+        let y = get_combination_count(&springs, &groups);
+        let factor = y / x;
+        factor.pow(4) * x
     }
 }
 
@@ -106,21 +111,22 @@ mod parser {
 }
 
 fn main() {
-    let input = include_str!("../data/demo_input.txt");
+    let input = include_str!("../data/input.txt");
     let rows = parser::parse(input);
 
     let combination_count = rows
         .iter()
         .map(|row| row.get_combination_count())
+        // .inspect(|count| println!("{count}"))
         .sum::<usize>();
     println!("There are {combination_count} possible arrangements.");
 
-    // let combination_count_unfolded = rows
-    //     .iter()
-    //     .map(|row| row.get_combination_count_unfolded())
-    //     .inspect(|count| println!("{count}"))
-    //     .sum::<usize>();
-    // println!("There are {combination_count_unfolded} possible arrangements if unfolded 5 times.");
+    let combination_count_unfolded = rows
+        .iter()
+        .map(|row| row.get_combination_count_unfolded())
+        // .inspect(|count| println!("{count}"))
+        .sum::<usize>();
+    println!("There are {combination_count_unfolded} possible arrangements if unfolded 5 times.");
 }
 
 #[cfg(test)]
