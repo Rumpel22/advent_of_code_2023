@@ -1,7 +1,3 @@
-use std::{iter, usize};
-
-use itertools::Itertools;
-
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 enum State {
     Operational,
@@ -97,7 +93,7 @@ mod parser {
         separated_list0(complete::char(','), usize)(s)
     }
 
-    fn row(s: &str) -> IResult<&str, Row> {
+    pub(crate) fn row(s: &str) -> IResult<&str, Row> {
         map(
             separated_pair(springs, space1, groups),
             |(springs, groups)| Row { springs, groups },
@@ -119,9 +115,21 @@ fn main() {
         .sum::<usize>();
     println!("There are {combination_count} possible arrangements.");
 
-    let combination_count_unfolded = rows
-        .iter()
-        .map(|row| row.get_combination_count_unfolded())
-        .sum::<usize>();
-    println!("There are {combination_count_unfolded} possible arrangements if unfolded 5 times.");
+    // let combination_count_unfolded = rows
+    //     .iter()
+    //     .map(|row| row.get_combination_count_unfolded())
+    //     .inspect(|count| println!("{count}"))
+    //     .sum::<usize>();
+    // println!("There are {combination_count_unfolded} possible arrangements if unfolded 5 times.");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_1() {
+        let row = parser::row("???.###    1,1,3").unwrap().1;
+
+        assert_eq!(row.get_combination_count_unfolded(), 1);
+    }
 }
