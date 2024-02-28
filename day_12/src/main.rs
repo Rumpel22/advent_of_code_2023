@@ -1,3 +1,7 @@
+use std::iter;
+
+use itertools::Itertools;
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 enum State {
     Operational,
@@ -11,6 +15,25 @@ pub struct Row {
     groups: Vec<usize>,
 }
 
+fn get_combination_count_all_unknown(spring_count: usize, group_count: usize) -> usize {
+    if group_count == 1 {
+        return spring_count;
+    }
+
+    let min_req = group_count * 2 - 1;
+    let additionals = spring_count - min_req;
+    if additionals == 0 {
+        // The only possible solution
+        return 1;
+    }
+    (0..=additionals)
+        .map(|index| {
+            let x = (group_count - 1) + additionals - index;
+            num::integer::binomial(x, group_count - 1)
+        })
+        .sum::<usize>()
+}
+
 fn get_combination_count(springs: &[State], groups: &[usize]) -> usize {
     if groups.is_empty() {
         if springs.iter().all(|spring| *spring != State::Damaged) {
@@ -18,6 +41,13 @@ fn get_combination_count(springs: &[State], groups: &[usize]) -> usize {
         } else {
             return 0;
         }
+    }
+
+    if springs.iter().all(|state| *state == State::Unknown) {
+        // If all groups are just "1",
+        let to_reduce = groups.iter().sum::<usize>() - groups.len();
+        let remaining_springs = springs.len() - to_reduce;
+        return get_combination_count_all_unknown(remaining_springs, groups.len());
     }
 
     let group = groups[0];
@@ -59,15 +89,13 @@ impl Row {
     }
 
     fn get_combination_count_unfolded(&self) -> usize {
-        let x = get_combination_count(&self.springs, &self.groups);
-        let mut springs = self.springs.clone();
-        springs.push(State::Unknown);
-        springs.extend_from_slice(&self.springs);
-        let mut groups = self.groups.clone();
-        groups.extend_from_slice(&self.groups);
-        let y = get_combination_count(&springs, &groups);
-        let factor = y / x;
-        factor.pow(4) * x
+        let springs = iter::repeat(&self.springs)
+            .take(5)
+            .interleave_shortest(iter::repeat(&vec![State::Unknown]).take(4))
+            .flatten()
+            .copied()
+            .collect::<Vec<_>>();
+        get_combination_count(&springs, &self.groups.repeat(5))
     }
 }
 
@@ -124,7 +152,9 @@ fn main() {
     let combination_count_unfolded = rows
         .iter()
         .map(|row| row.get_combination_count_unfolded())
-        // .inspect(|count| println!("{count}"))
+        .enumerate()
+        .inspect(|count| println!("{count:?}"))
+        .map(|x| x.1)
         .sum::<usize>();
     println!("There are {combination_count_unfolded} possible arrangements if unfolded 5 times.");
 }
@@ -137,5 +167,27 @@ mod tests {
         let row = parser::row("???.###    1,1,3").unwrap().1;
 
         assert_eq!(row.get_combination_count_unfolded(), 1);
+    }
+
+    #[test]
+    fn test_2() {
+        let row = parser::row("????     2").unwrap().1;
+
+        assert_eq!(row.get_combination_count_unfolded(), 3);
+    }
+
+    #[test]
+    fn test_7_unknowns() {
+        let row = parser::row("???????     1,1,1,1").unwrap().1;
+        assert_eq!(row.get_combination_count(), 1);
+
+        let row = parser::row("???????     1,1,1").unwrap().1;
+        assert_eq!(row.get_combination_count(), 10);
+
+        let row = parser::row("???????     1,1").unwrap().1;
+        assert_eq!(row.get_combination_count(), 15);
+
+        let row = parser::row("???????     1").unwrap().1;
+        assert_eq!(row.get_combination_count(), 7);
     }
 }
