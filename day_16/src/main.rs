@@ -107,14 +107,8 @@ impl Beam {
     }
 }
 
-fn main() {
-    let input = include_str!("../data/input.txt");
-    let contraption = parse(input);
-
-    let mut beams = vec![Beam {
-        direction: Direction::Right,
-        position: Coordinate { x: 0, y: 0 },
-    }];
+fn count_energized_fields(contraption: &Contraption, initial_beam: &Beam) -> usize {
+    let mut beams = vec![*initial_beam];
 
     let mut energized = HashSet::new();
     while let Some(beam) = beams.pop() {
@@ -165,6 +159,68 @@ fn main() {
     }
 
     let energized: HashSet<_> = energized.iter().map(|beam| beam.position).collect();
+    energized.len()
+}
 
-    println!("The are total {} fields energized.", energized.len());
+fn main() {
+    let input = include_str!("../data/input.txt");
+    let contraption = parse(input);
+
+    let energized_count = count_energized_fields(
+        &contraption,
+        &Beam {
+            direction: Direction::Right,
+            position: Coordinate { x: 0, y: 0 },
+        },
+    );
+
+    println!("The are total {} fields energized.", energized_count);
+
+    let mut beams = vec![];
+
+    let mut down_beams: Vec<_> = (0..contraption.width)
+        .map(|x| Beam {
+            position: Coordinate { x, y: 0 },
+            direction: Direction::Down,
+        })
+        .collect();
+    beams.append(&mut down_beams);
+
+    let mut up_beams: Vec<_> = (0..contraption.width)
+        .map(|x| Beam {
+            position: Coordinate {
+                x,
+                y: contraption.height - 1,
+            },
+            direction: Direction::Up,
+        })
+        .collect();
+    beams.append(&mut up_beams);
+
+    let mut left_beams: Vec<_> = (0..contraption.height)
+        .map(|y| Beam {
+            position: Coordinate {
+                x: contraption.width - 1,
+                y,
+            },
+            direction: Direction::Left,
+        })
+        .collect();
+    beams.append(&mut left_beams);
+
+    let mut right_beams: Vec<_> = (0..contraption.height)
+        .map(|y| Beam {
+            position: Coordinate { x: 0, y },
+            direction: Direction::Right,
+        })
+        .collect();
+    beams.append(&mut right_beams);
+
+    let max_energy = beams
+        .iter()
+        .map(|initial_beam| count_energized_fields(&contraption, initial_beam))
+        .max()
+        .unwrap();
+
+    println!("The maximum number energized tiles is {}.", max_energy);
 }
