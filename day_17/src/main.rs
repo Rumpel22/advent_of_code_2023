@@ -67,12 +67,12 @@ impl Ord for OpenNode {
     }
 }
 
-impl Into<ClosedNode> for &OpenNode {
-    fn into(self) -> ClosedNode {
+impl From<&OpenNode> for ClosedNode {
+    fn from(node: &OpenNode) -> Self {
         ClosedNode {
-            coordinate: self.coordinate,
-            direction_count: self.direction_count,
-            last_direction: self.last_direction.unwrap_or(Direction::Right),
+            coordinate: node.coordinate,
+            direction_count: node.direction_count,
+            last_direction: node.last_direction.unwrap_or(Direction::Right),
         }
     }
 }
@@ -169,7 +169,7 @@ impl CityMap {
     }
 
     fn get_index(&self, coordinate: &Coordinate) -> usize {
-        return coordinate.y * self.width + coordinate.x;
+        coordinate.y * self.width + coordinate.x
     }
 
     fn get_neighbours(&self, coordinate: &Coordinate) -> NeighboursIter {
