@@ -205,7 +205,7 @@ fn main() {
     });
 
     while let Some(current_node) = open_list.pop() {
-        if current_node.coordinate == end_node {
+        if current_node.coordinate == end_node && current_node.direction_count >= 4 {
             println!("Found path, total loss is {}", current_node.cumulated_loss);
             return;
         }
@@ -216,14 +216,21 @@ fn main() {
             if current_node.last_direction == Some(direction.opposite()) {
                 continue;
             }
-            if current_node.last_direction == Some(direction) && current_node.direction_count == 3 {
+            if current_node.last_direction == Some(direction) && current_node.direction_count == 10
+            {
+                continue;
+            }
+            if current_node.direction_count < 4
+                && current_node.last_direction != Some(direction)
+                && current_node.last_direction.is_some()
+            {
                 continue;
             }
 
             if closed_list.contains(&ClosedNode {
                 coordinate: successor,
                 last_direction: direction,
-                direction_count: current_node.direction_count,
+                direction_count: current_node.direction_count + 1,
             }) {
                 continue;
             }
@@ -231,7 +238,7 @@ fn main() {
 
             if let Some(list_node) = open_list.iter_mut().find(|list_node| {
                 list_node.coordinate == successor
-                    && list_node.direction_count == current_node.direction_count
+                    && list_node.direction_count == current_node.direction_count + 1
                     && list_node.last_direction == Some(direction)
             }) {
                 if list_node.cumulated_loss < g {
