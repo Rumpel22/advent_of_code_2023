@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 enum Direction {
     Up,
     Down,
@@ -14,7 +14,7 @@ struct CityMap {
     losses: Vec<u16>,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 struct Coordinate {
     x: usize,
     y: usize,
@@ -28,19 +28,13 @@ impl Coordinate {
 
 type Loss = u16;
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 struct OpenNode {
     coordinate: Coordinate,
     cumulated_loss: Loss,
     min_loss: Loss,
     last_direction: Option<Direction>,
     direction_count: u8,
-}
-
-impl PartialOrd for OpenNode {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
 }
 
 impl Direction {
@@ -59,12 +53,6 @@ struct ClosedNode {
     coordinate: Coordinate,
     last_direction: Direction,
     direction_count: u8,
-}
-
-impl Ord for OpenNode {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other.min_loss.cmp(&self.min_loss)
-    }
 }
 
 impl From<&OpenNode> for ClosedNode {
@@ -220,10 +208,16 @@ fn main() {
                 continue;
             }
 
+            let step_count = if current_node.last_direction == Some(direction) {
+                current_node.direction_count + 1
+            } else {
+                1
+            };
+
             if closed_list.contains(&ClosedNode {
                 coordinate: successor,
                 last_direction: direction,
-                direction_count: current_node.direction_count,
+                direction_count: step_count,
             }) {
                 continue;
             }
@@ -231,14 +225,14 @@ fn main() {
 
             if let Some(list_node) = open_list.iter_mut().find(|list_node| {
                 list_node.coordinate == successor
-                    && list_node.direction_count == current_node.direction_count
+                    && list_node.direction_count == step_count
                     && list_node.last_direction == Some(direction)
             }) {
                 if list_node.cumulated_loss < g {
                     continue;
                 } else {
                     list_node.cumulated_loss = g;
-                    if list_node.direction_count > current_node.direction_count {
+                    if list_node.direction_count > step_count {
                         list_node.direction_count = current_node.direction_count;
                     }
                 }
@@ -251,15 +245,11 @@ fn main() {
                     cumulated_loss: g,
                     min_loss: f,
                     last_direction: Some(direction),
-                    direction_count: if current_node.last_direction == Some(direction) {
-                        current_node.direction_count + 1
-                    } else {
-                        1
-                    },
+                    direction_count: step_count,
                 });
             }
         }
-        open_list.sort();
+        open_list.sort_by(|a, b| b.min_loss.cmp(&a.min_loss));
     }
 
     unreachable!()
