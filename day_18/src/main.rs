@@ -1,4 +1,4 @@
-use std::{collections::HashMap, iter};
+use std::{collections::HashSet, iter};
 
 #[derive(Debug, Clone, Copy)]
 enum Direction {
@@ -10,12 +10,12 @@ enum Direction {
 
 #[derive(Debug)]
 struct Command {
-    length: u8,
+    length: u32,
     direction: Direction,
 }
 
 impl Command {
-    fn from_str(line: &'_ str) -> Self {
+    fn from_str(line: &str) -> Self {
         let mut iter = line.split_ascii_whitespace();
         let direction = match iter.next().unwrap() {
             "U" => Direction::Up,
@@ -29,14 +29,27 @@ impl Command {
 
         Command { direction, length }
     }
+
+    fn from_str2(line: &str) -> Self {
+        let color = &line.split_ascii_whitespace().nth(2).unwrap()[2..8];
+        let length = u32::from_str_radix(&color[..5], 16).unwrap();
+        let direction = match color.chars().nth(5).unwrap() {
+            '3' => Direction::Up,
+            '1' => Direction::Down,
+            '2' => Direction::Left,
+            '0' => Direction::Right,
+            _ => unreachable!(),
+        };
+        Command { direction, length }
+    }
 }
 
 #[derive(Debug)]
 struct Commands(Vec<Command>);
 
-struct DigPlan<'a>(HashMap<(i32, i32), &'a str>);
+struct DigPlan(HashSet<(i32, i32)>);
 
-fn execute<'a>(commands: &'a [Command]) -> DigPlan<'a> {
+fn execute(commands: &[Command]) -> DigPlan {
     let mut fields = commands
         .iter()
         .flat_map(|command| iter::repeat(command.direction).take(command.length as usize))
@@ -50,16 +63,14 @@ fn execute<'a>(commands: &'a [Command]) -> DigPlan<'a> {
             Some((*x, *y))
         })
         // .inspect(|(x, y)| println!("{} | {}", x, y))
-        .map(|(x, y)| ((x, y), ""))
-        .collect::<HashMap<_, _>>();
+        .collect::<HashSet<_>>();
 
     // Find empty field in the plan
-    let min_x = fields.keys().map(|(x, _)| *x).min().unwrap();
-    let min_y = fields.keys().map(|(_, y)| *y).min().unwrap();
+    let min_x = fields.iter().map(|(x, _)| *x).min().unwrap();
+    let min_y = fields.iter().map(|(_, y)| *y).min().unwrap();
     let x = (min_x..)
         .skip_while(|x| fields.get(&(*x, min_y)).is_none())
-        .skip(1)
-        .next()
+        .nth(1)
         .unwrap();
     let start_field = (x, min_y + 1);
     println!("{:?}", start_field);
@@ -67,7 +78,7 @@ fn execute<'a>(commands: &'a [Command]) -> DigPlan<'a> {
 
     let mut open_fields = vec![start_field];
     while let Some((x, y)) = open_fields.pop() {
-        fields.insert((x, y), "");
+        fields.insert((x, y));
         if fields.get(&(x + 1, y)).is_none() {
             open_fields.push((x + 1, y));
         }
@@ -87,15 +98,25 @@ fn execute<'a>(commands: &'a [Command]) -> DigPlan<'a> {
 
 impl Commands {
     fn from_str(input: &str) -> Self {
-        Commands(input.lines().map(|line| Command::from_str(line)).collect())
+        Commands(input.lines().map(Command::from_str).collect())
+    }
+    fn from_str2(input: &str) -> Self {
+        Commands(input.lines().map(Command::from_str2).collect())
     }
 }
 
 fn main() {
-    let input = include_str!("../data/input.txt");
+    let input = include_str!("../data/demo_input.txt");
     let commands = Commands::from_str(input);
     let dig_plan = execute(&commands.0);
 
     let field_count = dig_plan.0.len();
     println!("There are {} fields in the dig plan", field_count);
+
+    let commands = Commands::from_str2(input);
+    // println!("{:?}", commands);
+    // // let dig_plan = execute(&commands.0);
+
+    // let field_count = dig_plan.0.len();
+    // println!("There are {} fields in the dig plan", field_count);
 }
