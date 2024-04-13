@@ -10,7 +10,7 @@ enum Direction {
 
 #[derive(Debug)]
 struct Command {
-    length: u32,
+    length: i32,
     direction: Direction,
 }
 
@@ -32,7 +32,7 @@ impl Command {
 
     fn from_str2(line: &str) -> Self {
         let color = &line.split_ascii_whitespace().nth(2).unwrap()[2..8];
-        let length = u32::from_str_radix(&color[..5], 16).unwrap();
+        let length = i32::from_str_radix(&color[..5], 16).unwrap();
         let direction = match color.chars().nth(5).unwrap() {
             '3' => Direction::Up,
             '1' => Direction::Down,
@@ -44,56 +44,77 @@ impl Command {
     }
 }
 
+impl Coordinate {
+    fn step(&self, direction: Direction, step: i32) -> Self {
+        let (x, y) = match direction {
+            Direction::Up => (self.x, self.y - step),
+            Direction::Down => (self.x, self.y + step),
+            Direction::Left => (self.x - step, self.y),
+            Direction::Right => (self.x + step, self.y),
+        };
+        Coordinate { x, y }
+    }
+    fn next(self, direction: Direction) -> Self {
+        self.step(direction, 1)
+    }
+}
+
+#[derive(Default, PartialEq, Eq, Hash, Clone, Copy, Debug)]
+struct Coordinate {
+    x: i32,
+    y: i32,
+}
+
 #[derive(Debug)]
 struct Commands(Vec<Command>);
 
-struct DigPlan(HashSet<(i32, i32)>);
+struct Line {
+    start: Coordinate,
+    end: Coordinate,
+}
 
-fn execute(commands: &[Command]) -> DigPlan {
+struct Lines(Vec<Line>);
+
+fn execute(commands: &[Command]) -> HashSet<Coordinate> {
     let mut fields = commands
         .iter()
         .flat_map(|command| iter::repeat(command.direction).take(command.length as usize))
-        .scan((0, 0), |(x, y), direction| {
-            (*x, *y) = match direction {
-                Direction::Up => (*x, *y - 1),
-                Direction::Down => (*x, *y + 1),
-                Direction::Left => (*x - 1, *y),
-                Direction::Right => (*x + 1, *y),
-            };
-            Some((*x, *y))
+        .scan(Coordinate::default(), |coordinate, direction| {
+            *coordinate = coordinate.next(direction);
+            Some(*coordinate)
         })
-        // .inspect(|(x, y)| println!("{} | {}", x, y))
+        // .inspect(|coordinate| println!("{:?} ", coordinate))
         .collect::<HashSet<_>>();
 
     // Find empty field in the plan
-    let min_x = fields.iter().map(|(x, _)| *x).min().unwrap();
-    let min_y = fields.iter().map(|(_, y)| *y).min().unwrap();
-    let x = (min_x..)
-        .skip_while(|x| fields.get(&(*x, min_y)).is_none())
-        .nth(1)
-        .unwrap();
-    let start_field = (x, min_y + 1);
-    println!("{:?}", start_field);
+    let min_x = fields.iter().map(|coordinate| coordinate.x).min().unwrap();
+    let min_y = fields.iter().map(|coordinate| coordinate.y).min().unwrap();
+    let mut start_field = Coordinate { x: min_x, y: min_y };
+    while fields.get(&start_field).is_none() {
+        start_field = start_field.next(Direction::Right);
+    }
+    // We have found the top-left corner, so the first field within the digplan is 1 field diagonally down-right
+    start_field = start_field.next(Direction::Down).next(Direction::Right);
     assert!(fields.get(&start_field).is_none());
 
     let mut open_fields = vec![start_field];
-    while let Some((x, y)) = open_fields.pop() {
-        fields.insert((x, y));
-        if fields.get(&(x + 1, y)).is_none() {
-            open_fields.push((x + 1, y));
+    while let Some(field) = open_fields.pop() {
+        fields.insert(field);
+        if fields.get(&field.next(Direction::Right)).is_none() {
+            open_fields.push(field.next(Direction::Right));
         }
-        if fields.get(&(x - 1, y)).is_none() {
-            open_fields.push((x - 1, y));
+        if fields.get(&field.next(Direction::Left)).is_none() {
+            open_fields.push(field.next(Direction::Left));
         }
-        if fields.get(&(x, y + 1)).is_none() {
-            open_fields.push((x, y + 1));
+        if fields.get(&field.next(Direction::Down)).is_none() {
+            open_fields.push(field.next(Direction::Down));
         }
-        if fields.get(&(x, y - 1)).is_none() {
-            open_fields.push((x, y - 1));
+        if fields.get(&field.next(Direction::Up)).is_none() {
+            open_fields.push(field.next(Direction::Up));
         }
     }
 
-    DigPlan(fields)
+    fields
 }
 
 impl Commands {
@@ -105,18 +126,32 @@ impl Commands {
     }
 }
 
+impl From<&Commands> for Lines {
+    fn from(commands: &Commands) -> Self {
+        let current = Coordinate::default();
+        let lines = commands
+            .0
+            .iter()
+            .scan(Coordinate::default(), |start, command| {
+                let end = start.step(command.direction, command.length);
+                let line = Line { start: *start, end };
+                *start = end;
+                Some(line)
+            })
+            .collect::<Vec<_>>();
+        Lines(lines)
+    }
+}
+
 fn main() {
     let input = include_str!("../data/demo_input.txt");
+
     let commands = Commands::from_str(input);
     let dig_plan = execute(&commands.0);
-
-    let field_count = dig_plan.0.len();
+    let field_count = dig_plan.len();
     println!("There are {} fields in the dig plan", field_count);
 
     let commands = Commands::from_str2(input);
-    // println!("{:?}", commands);
-    // // let dig_plan = execute(&commands.0);
-
-    // let field_count = dig_plan.0.len();
-    // println!("There are {} fields in the dig plan", field_count);
+    let lines = Lines::from(&commands);
+    println!("There are {} fields in the dig plan", field_count);
 }
