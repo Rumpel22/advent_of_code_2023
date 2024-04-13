@@ -73,6 +73,46 @@ struct Line {
     end: Coordinate,
 }
 
+struct Rectangle {
+    corner_1: Coordinate,
+    corner_2: Coordinate,
+}
+
+impl Rectangle {
+    fn size(&self) -> u64 {
+        self.height() * self.width()
+    }
+
+    fn width(&self) -> u64 {
+        (self.corner_1.x.abs_diff(self.corner_2.x) + 1) as u64
+    }
+    fn height(&self) -> u64 {
+        (self.corner_1.y.abs_diff(self.corner_2.y) + 1) as u64
+    }
+}
+
+struct DigPlan {
+    rectangles: Vec<Rectangle>,
+}
+impl DigPlan {
+    fn size(&self) -> u64 {
+        self.rectangles
+            .iter()
+            .map(|rectangle| rectangle.size())
+            .sum()
+    }
+}
+
+fn get_dig_plan(lines: &Lines) -> DigPlan {
+    let line_with_min_x = lines
+        .0
+        .iter()
+        .min_by_key(|line| line.end.x.min(line.start.x))
+        .unwrap();
+    // let top_left
+    DigPlan { rectangles: vec![] }
+}
+
 struct Lines(Vec<Line>);
 
 fn execute(commands: &[Command]) -> HashSet<Coordinate> {
@@ -128,7 +168,6 @@ impl Commands {
 
 impl From<&Commands> for Lines {
     fn from(commands: &Commands) -> Self {
-        let current = Coordinate::default();
         let lines = commands
             .0
             .iter()
@@ -139,6 +178,9 @@ impl From<&Commands> for Lines {
                 Some(line)
             })
             .collect::<Vec<_>>();
+
+        assert!(lines.last().unwrap().end == Coordinate::default());
+
         Lines(lines)
     }
 }
@@ -153,5 +195,7 @@ fn main() {
 
     let commands = Commands::from_str2(input);
     let lines = Lines::from(&commands);
+    let dig_plan = get_dig_plan(&lines);
+    let field_count = dig_plan.size();
     println!("There are {} fields in the dig plan", field_count);
 }
