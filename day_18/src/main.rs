@@ -1,4 +1,4 @@
-use std::{collections::HashSet, iter};
+use std::{collections::HashSet, iter, marker::PhantomPinned, pin::Pin};
 
 #[derive(Debug, Clone, Copy)]
 enum Direction {
@@ -71,6 +71,9 @@ struct Commands(Vec<Command>);
 struct Line {
     start: Coordinate,
     end: Coordinate,
+    prev: *mut Line,
+    next: *mut Line,
+    _pinned: PhantomPinned,
 }
 
 struct Rectangle {
@@ -113,7 +116,7 @@ fn get_dig_plan(lines: &Lines) -> DigPlan {
     DigPlan { rectangles: vec![] }
 }
 
-struct Lines(Vec<Line>);
+struct Lines(Vec<Pin<Box<Line>>>);
 
 fn execute(commands: &[Command]) -> HashSet<Coordinate> {
     let mut fields = commands
@@ -168,16 +171,40 @@ impl Commands {
 
 impl From<&Commands> for Lines {
     fn from(commands: &Commands) -> Self {
-        let lines = commands
+        let mut lines = commands
             .0
             .iter()
-            .scan(Coordinate::default(), |start, command| {
-                let end = start.step(command.direction, command.length);
-                let line = Line { start: *start, end };
-                *start = end;
-                Some(line)
-            })
+            .scan(
+                (Coordinate::default(), std::ptr::null_mut()),
+                |(start, prev), command| {
+                    let end = start.step(command.direction, command.length);
+                    let mut line = Box::pin(Line {
+                        start: *start,
+                        end,
+                        prev: *prev,
+                        next: std::ptr::null_mut(),
+                        _pinned: PhantomPinned,
+                    });
+                    let line_ptr = unsafe { line.as_mut().get_unchecked_mut() };
+                    if !prev.is_null() {
+                        unsafe {
+                            prev.as_mut().unwrap().next = line_ptr;
+                        }
+                    }
+                    *prev = line_ptr;
+                    *start = end;
+                    Some(line)
+                },
+            )
             .collect::<Vec<_>>();
+
+        // Connect the both ends
+        unsafe {
+            let last: *mut Line = lines.last_mut().unwrap().as_mut().get_unchecked_mut();
+            let first: *mut Line = lines.first_mut().unwrap().as_mut().get_unchecked_mut();
+            (*last).next = first;
+            (*first).prev = last;
+        }
 
         assert!(lines.last().unwrap().end == Coordinate::default());
 
@@ -195,6 +222,19 @@ fn main() {
 
     let commands = Commands::from_str2(input);
     let lines = Lines::from(&commands);
+    // println!("{:?}", unsafe {
+    //     lines
+    //         .0
+    //         .first()
+    //         .unwrap()
+    //         .next
+    //         .as_ref()
+    //         .unwrap()
+    //         .next
+    //         .as_ref()
+    //         .unwrap()
+    //         .end
+    // });
     let dig_plan = get_dig_plan(&lines);
     let field_count = dig_plan.size();
     println!("There are {} fields in the dig plan", field_count);
