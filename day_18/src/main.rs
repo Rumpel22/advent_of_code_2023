@@ -76,6 +76,15 @@ struct Line {
     _pinned: PhantomPinned,
 }
 
+impl Line {
+    fn vertical(&self) -> bool {
+        self.start.x == self.end.x
+    }
+    fn horizontal(&self) -> bool {
+        self.start.y == self.end.y
+    }
+}
+
 struct Rectangle {
     corner_1: Coordinate,
     corner_2: Coordinate,
@@ -107,13 +116,18 @@ impl DigPlan {
 }
 
 fn get_dig_plan(lines: &Lines) -> DigPlan {
-    let line_with_min_x = lines
-        .0
-        .iter()
-        .min_by_key(|line| line.end.x.min(line.start.x))
-        .unwrap();
-    // let top_left
-    DigPlan { rectangles: vec![] }
+    // Horizontal lines, sorted from top-left to bottom-right
+    let mut horizontal_lines: Vec<_> = lines.0.iter().filter(|line| line.horizontal()).collect();
+    horizontal_lines.sort_by(|a, b| b.end.y.min(b.start.y).cmp(&a.end.y.min(a.start.y)));
+
+    let mut rectangles = Vec::new();
+
+    while let Some(line) = horizontal_lines.pop() {
+        let range = line.start.x..=line.end.x;
+        range.count();
+        let width = line.start.x.abs_diff(line.end.x) + 1;
+    }
+    DigPlan { rectangles }
 }
 
 struct Lines(Vec<Pin<Box<Line>>>);
@@ -198,7 +212,7 @@ impl From<&Commands> for Lines {
             )
             .collect::<Vec<_>>();
 
-        // Connect the both ends
+        // Connect the two ends
         unsafe {
             let last: *mut Line = lines.last_mut().unwrap().as_mut().get_unchecked_mut();
             let first: *mut Line = lines.first_mut().unwrap().as_mut().get_unchecked_mut();
