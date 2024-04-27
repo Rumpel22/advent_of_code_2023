@@ -1,4 +1,4 @@
-use std::{collections::HashSet, iter, marker::PhantomPinned, pin::Pin};
+use std::{collections::HashSet, iter};
 
 #[derive(Debug, Clone, Copy)]
 enum Direction {
@@ -71,15 +71,9 @@ struct Commands(Vec<Command>);
 struct Line {
     start: Coordinate,
     end: Coordinate,
-    prev: *mut Line,
-    next: *mut Line,
-    _pinned: PhantomPinned,
 }
 
 impl Line {
-    fn vertical(&self) -> bool {
-        self.start.x == self.end.x
-    }
     fn horizontal(&self) -> bool {
         self.start.y == self.end.y
     }
@@ -117,20 +111,110 @@ impl DigPlan {
 
 fn get_dig_plan(lines: &Lines) -> DigPlan {
     // Horizontal lines, sorted from top-left to bottom-right
-    let mut horizontal_lines: Vec<_> = lines.0.iter().filter(|line| line.horizontal()).collect();
-    horizontal_lines.sort_by(|a, b| b.end.y.min(b.start.y).cmp(&a.end.y.min(a.start.y)));
+    let mut horizontal_lines: Vec<_> = lines
+        .0
+        .iter()
+        .filter(|line| line.horizontal())
+        .map(|line| {
+            if line.start.x < line.end.x {
+                (line.start.y, line.start.x..=line.end.x)
+            } else {
+                (line.start.y, line.end.x..=line.start.x)
+            }
+        })
+        .collect();
+    horizontal_lines.sort_by(|(y_a, _), (y_b, _)| y_b.cmp(y_a));
 
     let mut rectangles = Vec::new();
 
-    while let Some(line) = horizontal_lines.pop() {
-        let range = line.start.x..=line.end.x;
-        range.count();
-        let width = line.start.x.abs_diff(line.end.x) + 1;
+    while let Some((current_y, current_range)) = horizontal_lines.pop() {
+        let bottom_rev_index = horizontal_lines
+            .iter()
+            .rev()
+            .position(|(y, range)| {
+                y > &current_y
+                    && (current_range.contains(range.start())
+                        || current_range.contains(range.end()))
+            })
+            .expect("No bottom line found for current line.");
+        let bottom_index = horizontal_lines.len() - bottom_rev_index - 1;
+        let (bottom_y, bottom_range) = horizontal_lines.remove(bottom_index);
+
+        if bottom_range.start() == current_range.end() {
+            let corner_1 = Coordinate {
+                x: *current_range.start(),
+                y: current_y,
+            };
+            let corner_2 = Coordinate {
+                x: *current_range.end(),
+                y: bottom_y - 1,
+            };
+            rectangles.push(Rectangle { corner_1, corner_2 });
+            let new_line = *current_range.start()..=*bottom_range.end();
+            horizontal_lines.push((bottom_y, new_line));
+        } else if bottom_range.end() == current_range.start() {
+            let corner_1 = Coordinate {
+                x: *current_range.start(),
+                y: current_y,
+            };
+            let corner_2 = Coordinate {
+                x: *current_range.end(),
+                y: bottom_y - 1,
+            };
+            rectangles.push(Rectangle { corner_1, corner_2 });
+            let new_line = *bottom_range.start()..=*current_range.end();
+            horizontal_lines.push((bottom_y, new_line));
+        } else if bottom_range.end() == current_range.end() {
+            let corner_1 = Coordinate {
+                x: *current_range.start(),
+                y: current_y,
+            };
+            let corner_2 = Coordinate {
+                x: *current_range.end(),
+                y: bottom_y,
+            };
+            rectangles.push(Rectangle { corner_1, corner_2 });
+
+            if current_range != bottom_range {
+                let new_line = *current_range.start()..=*bottom_range.start();
+                horizontal_lines.push((bottom_y + 1, new_line));
+            }
+        } else if bottom_range.start() == current_range.start() {
+            let corner_1 = Coordinate {
+                x: *current_range.start(),
+                y: current_y,
+            };
+            let corner_2 = Coordinate {
+                x: *current_range.end(),
+                y: bottom_y,
+            };
+            rectangles.push(Rectangle { corner_1, corner_2 });
+
+            if bottom_range != current_range {
+                let new_line = *bottom_range.end()..=*current_range.end();
+                horizontal_lines.push((bottom_y + 1, new_line));
+            }
+        } else {
+            let corner_1 = Coordinate {
+                x: *current_range.start(),
+                y: current_y,
+            };
+            let corner_2 = Coordinate {
+                x: *current_range.end(),
+                y: bottom_y,
+            };
+            rectangles.push(Rectangle { corner_1, corner_2 });
+            let new_line1 = *current_range.start()..=*bottom_range.start();
+            let new_line2 = *bottom_range.end()..=*current_range.end();
+            horizontal_lines.push((bottom_y + 1, new_line1));
+            horizontal_lines.push((bottom_y + 1, new_line2));
+        }
+        horizontal_lines.sort_by(|(y_a, _), (y_b, _)| y_b.cmp(y_a));
     }
     DigPlan { rectangles }
 }
 
-struct Lines(Vec<Pin<Box<Line>>>);
+struct Lines(Vec<Line>);
 
 fn execute(commands: &[Command]) -> HashSet<Coordinate> {
     let mut fields = commands
@@ -185,40 +269,16 @@ impl Commands {
 
 impl From<&Commands> for Lines {
     fn from(commands: &Commands) -> Self {
-        let mut lines = commands
+        let lines = commands
             .0
             .iter()
-            .scan(
-                (Coordinate::default(), std::ptr::null_mut()),
-                |(start, prev), command| {
-                    let end = start.step(command.direction, command.length);
-                    let mut line = Box::pin(Line {
-                        start: *start,
-                        end,
-                        prev: *prev,
-                        next: std::ptr::null_mut(),
-                        _pinned: PhantomPinned,
-                    });
-                    let line_ptr = unsafe { line.as_mut().get_unchecked_mut() };
-                    if !prev.is_null() {
-                        unsafe {
-                            prev.as_mut().unwrap().next = line_ptr;
-                        }
-                    }
-                    *prev = line_ptr;
-                    *start = end;
-                    Some(line)
-                },
-            )
+            .scan(Coordinate::default(), |start, command| {
+                let end = start.step(command.direction, command.length);
+                let line = Line { start: *start, end };
+                *start = end;
+                Some(line)
+            })
             .collect::<Vec<_>>();
-
-        // Connect the two ends
-        unsafe {
-            let last: *mut Line = lines.last_mut().unwrap().as_mut().get_unchecked_mut();
-            let first: *mut Line = lines.first_mut().unwrap().as_mut().get_unchecked_mut();
-            (*last).next = first;
-            (*first).prev = last;
-        }
 
         assert!(lines.last().unwrap().end == Coordinate::default());
 
@@ -227,7 +287,7 @@ impl From<&Commands> for Lines {
 }
 
 fn main() {
-    let input = include_str!("../data/demo_input.txt");
+    let input = include_str!("../data/input.txt");
 
     let commands = Commands::from_str(input);
     let dig_plan = execute(&commands.0);
@@ -236,19 +296,7 @@ fn main() {
 
     let commands = Commands::from_str2(input);
     let lines = Lines::from(&commands);
-    // println!("{:?}", unsafe {
-    //     lines
-    //         .0
-    //         .first()
-    //         .unwrap()
-    //         .next
-    //         .as_ref()
-    //         .unwrap()
-    //         .next
-    //         .as_ref()
-    //         .unwrap()
-    //         .end
-    // });
+
     let dig_plan = get_dig_plan(&lines);
     let field_count = dig_plan.size();
     println!("There are {} fields in the dig plan", field_count);
