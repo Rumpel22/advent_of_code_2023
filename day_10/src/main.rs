@@ -167,7 +167,7 @@ impl Map {
 
     fn iter(&self, coordinate: Coordinate, direction: Direction) -> MapWalker {
         MapWalker {
-            map: &self,
+            map: self,
             coordinate,
             direction,
         }
@@ -285,7 +285,7 @@ fn main() {
                     } else if *inside {
                         return Some(true);
                     }
-                    return Some(false);
+                    Some(false)
                 })
                 .filter(|is_enclosed| *is_enclosed)
                 .count()
