@@ -1,6 +1,4 @@
-use std::{collections::HashSet, iter};
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum Direction {
     Up,
     Down,
@@ -10,7 +8,7 @@ enum Direction {
 
 #[derive(Debug)]
 struct Command {
-    length: i32,
+    length: i64,
     direction: Direction,
 }
 
@@ -32,7 +30,7 @@ impl Command {
 
     fn from_str2(line: &str) -> Self {
         let color = &line.split_ascii_whitespace().nth(2).unwrap()[2..8];
-        let length = i32::from_str_radix(&color[..5], 16).unwrap();
+        let length = i64::from_str_radix(&color[..5], 16).unwrap();
         let direction = match color.chars().nth(5).unwrap() {
             '3' => Direction::Up,
             '1' => Direction::Down,
@@ -45,24 +43,21 @@ impl Command {
 }
 
 impl Coordinate {
-    fn step(&self, direction: Direction, step: i32) -> Self {
+    fn step(&self, direction: Direction, step: i64) -> Self {
         let (x, y) = match direction {
-            Direction::Up => (self.x, self.y - step),
-            Direction::Down => (self.x, self.y + step),
+            Direction::Up => (self.x, self.y + step),
+            Direction::Down => (self.x, self.y - step),
             Direction::Left => (self.x - step, self.y),
             Direction::Right => (self.x + step, self.y),
         };
         Coordinate { x, y }
     }
-    fn next(self, direction: Direction) -> Self {
-        self.step(direction, 1)
-    }
 }
 
 #[derive(Default, PartialEq, Eq, Hash, Clone, Copy, Debug)]
 struct Coordinate {
-    x: i32,
-    y: i32,
+    x: i64,
+    y: i64,
 }
 
 #[derive(Debug)]
@@ -77,24 +72,36 @@ impl Line {
     fn horizontal(&self) -> bool {
         self.start.y == self.end.y
     }
+    fn length(&self) -> i64 {
+        if self.horizontal() {
+            self.end.x.abs_diff(self.start.x) as i64
+        } else {
+            self.end.y.abs_diff(self.start.y) as i64
+        }
+    }
+
+    fn direction(&self) -> Direction {
+        if self.horizontal() {
+            if self.end.x > self.start.x {
+                Direction::Right
+            } else {
+                Direction::Left
+            }
+        } else {
+            if self.end.y > self.start.y {
+                Direction::Up
+            } else {
+                Direction::Down
+            }
+        }
+    }
 }
 
+#[derive(Debug)]
 struct Rectangle {
-    corner_1: Coordinate,
-    corner_2: Coordinate,
-}
-
-impl Rectangle {
-    fn size(&self) -> u64 {
-        self.height() * self.width()
-    }
-
-    fn width(&self) -> u64 {
-        (self.corner_1.x.abs_diff(self.corner_2.x) + 1) as u64
-    }
-    fn height(&self) -> u64 {
-        (self.corner_1.y.abs_diff(self.corner_2.y) + 1) as u64
-    }
+    height: i64,
+    width: i64,
+    positive: bool,
 }
 
 struct DigPlan {
@@ -104,159 +111,55 @@ impl DigPlan {
     fn size(&self) -> u64 {
         self.rectangles
             .iter()
-            .map(|rectangle| rectangle.size())
-            .sum()
+            .map(|rectangle| {
+                rectangle.height * rectangle.width * if rectangle.positive { 1 } else { -1 }
+            })
+            .sum::<i64>()
+            .abs() as u64
     }
 }
 
-fn get_dig_plan(lines: &Lines) -> DigPlan {
-    // Horizontal lines, sorted from top-left to bottom-right
-    let mut horizontal_lines: Vec<_> = lines
-        .0
-        .iter()
-        .filter(|line| line.horizontal())
-        .map(|line| {
-            if line.start.x < line.end.x {
-                (line.start.y, line.start.x..=line.end.x)
-            } else {
-                (line.start.y, line.end.x..=line.start.x)
-            }
-        })
-        .collect();
-    horizontal_lines.sort_by(|(y_a, _), (y_b, _)| y_b.cmp(y_a));
+fn get_dig_plan(commands: &Commands) -> DigPlan {
+    let lines = Lines::from(commands);
+    let lines = lines.shift_to_baseline();
 
-    let mut rectangles = Vec::new();
+    let mut rectangles = vec![];
 
-    while let Some((current_y, current_range)) = horizontal_lines.pop() {
-        let bottom_rev_index = horizontal_lines
-            .iter()
-            .rev()
-            .position(|(y, range)| {
-                y > &current_y
-                    && (current_range.contains(range.start())
-                        || current_range.contains(range.end()))
-            })
-            .expect("No bottom line found for current line.");
-        let bottom_index = horizontal_lines.len() - bottom_rev_index - 1;
-        let (bottom_y, bottom_range) = horizontal_lines.remove(bottom_index);
-
-        if bottom_range.start() == current_range.end() {
-            let corner_1 = Coordinate {
-                x: *current_range.start(),
-                y: current_y,
-            };
-            let corner_2 = Coordinate {
-                x: *current_range.end(),
-                y: bottom_y - 1,
-            };
-            rectangles.push(Rectangle { corner_1, corner_2 });
-            let new_line = *current_range.start()..=*bottom_range.end();
-            horizontal_lines.push((bottom_y, new_line));
-        } else if bottom_range.end() == current_range.start() {
-            let corner_1 = Coordinate {
-                x: *current_range.start(),
-                y: current_y,
-            };
-            let corner_2 = Coordinate {
-                x: *current_range.end(),
-                y: bottom_y - 1,
-            };
-            rectangles.push(Rectangle { corner_1, corner_2 });
-            let new_line = *bottom_range.start()..=*current_range.end();
-            horizontal_lines.push((bottom_y, new_line));
-        } else if bottom_range.end() == current_range.end() {
-            let corner_1 = Coordinate {
-                x: *current_range.start(),
-                y: current_y,
-            };
-            let corner_2 = Coordinate {
-                x: *current_range.end(),
-                y: bottom_y,
-            };
-            rectangles.push(Rectangle { corner_1, corner_2 });
-
-            if current_range != bottom_range {
-                let new_line = *current_range.start()..=*bottom_range.start();
-                horizontal_lines.push((bottom_y + 1, new_line));
-            }
-        } else if bottom_range.start() == current_range.start() {
-            let corner_1 = Coordinate {
-                x: *current_range.start(),
-                y: current_y,
-            };
-            let corner_2 = Coordinate {
-                x: *current_range.end(),
-                y: bottom_y,
-            };
-            rectangles.push(Rectangle { corner_1, corner_2 });
-
-            if bottom_range != current_range {
-                let new_line = *bottom_range.end()..=*current_range.end();
-                horizontal_lines.push((bottom_y + 1, new_line));
-            }
-        } else {
-            let corner_1 = Coordinate {
-                x: *current_range.start(),
-                y: current_y,
-            };
-            let corner_2 = Coordinate {
-                x: *current_range.end(),
-                y: bottom_y,
-            };
-            rectangles.push(Rectangle { corner_1, corner_2 });
-            let new_line1 = *current_range.start()..=*bottom_range.start();
-            let new_line2 = *bottom_range.end()..=*current_range.end();
-            horizontal_lines.push((bottom_y + 1, new_line1));
-            horizontal_lines.push((bottom_y + 1, new_line2));
+    for i in 0..lines.0.len() {
+        let line = &lines.0[i];
+        if !line.horizontal() {
+            continue;
         }
-        horizontal_lines.sort_by(|(y_a, _), (y_b, _)| y_b.cmp(y_a));
+
+        let prev_index = (i + lines.0.len() - 1) % lines.0.len();
+        let next_index = (i + 1) % lines.0.len();
+        let prev_direction = lines.0[prev_index].direction();
+        let next_direction = lines.0[next_index].direction();
+        let same_directions = prev_direction == next_direction;
+        let y = line.start.y;
+
+        let positive = line.start.x < line.end.x;
+        let (width, height) = match (positive, same_directions, prev_direction) {
+            (true, true, _) => (line.length(), y + 1),
+            (true, false, Direction::Up) => (line.length() + 1, y + 1),
+            (true, false, Direction::Down) => (line.length() - 1, y + 1),
+            (false, true, _) => (line.length(), y),
+            (false, false, Direction::Up) => (line.length() - 1, y),
+            (false, false, Direction::Down) => (line.length() + 1, y),
+            (_, _, _) => unreachable!(),
+        };
+
+        rectangles.push(Rectangle {
+            height,
+            width,
+            positive,
+        });
     }
+
     DigPlan { rectangles }
 }
 
 struct Lines(Vec<Line>);
-
-fn execute(commands: &[Command]) -> HashSet<Coordinate> {
-    let mut fields = commands
-        .iter()
-        .flat_map(|command| iter::repeat(command.direction).take(command.length as usize))
-        .scan(Coordinate::default(), |coordinate, direction| {
-            *coordinate = coordinate.next(direction);
-            Some(*coordinate)
-        })
-        // .inspect(|coordinate| println!("{:?} ", coordinate))
-        .collect::<HashSet<_>>();
-
-    // Find empty field in the plan
-    let min_x = fields.iter().map(|coordinate| coordinate.x).min().unwrap();
-    let min_y = fields.iter().map(|coordinate| coordinate.y).min().unwrap();
-    let mut start_field = Coordinate { x: min_x, y: min_y };
-    while fields.get(&start_field).is_none() {
-        start_field = start_field.next(Direction::Right);
-    }
-    // We have found the top-left corner, so the first field within the digplan is 1 field diagonally down-right
-    start_field = start_field.next(Direction::Down).next(Direction::Right);
-    assert!(fields.get(&start_field).is_none());
-
-    let mut open_fields = vec![start_field];
-    while let Some(field) = open_fields.pop() {
-        fields.insert(field);
-        if fields.get(&field.next(Direction::Right)).is_none() {
-            open_fields.push(field.next(Direction::Right));
-        }
-        if fields.get(&field.next(Direction::Left)).is_none() {
-            open_fields.push(field.next(Direction::Left));
-        }
-        if fields.get(&field.next(Direction::Down)).is_none() {
-            open_fields.push(field.next(Direction::Down));
-        }
-        if fields.get(&field.next(Direction::Up)).is_none() {
-            open_fields.push(field.next(Direction::Up));
-        }
-    }
-
-    fields
-}
 
 impl Commands {
     fn from_str(input: &str) -> Self {
@@ -286,18 +189,46 @@ impl From<&Commands> for Lines {
     }
 }
 
+impl Lines {
+    fn shift_to_baseline(self) -> Self {
+        let offset = self
+            .0
+            .iter()
+            .min_by_key(|line| line.start.y)
+            .unwrap()
+            .start
+            .y;
+        let new_lines = self
+            .0
+            .iter()
+            .map(|line| Line {
+                start: Coordinate {
+                    x: line.start.x,
+                    y: line.start.y - offset,
+                },
+                end: Coordinate {
+                    x: line.end.x,
+                    y: line.end.y - offset,
+                },
+            })
+            .collect();
+        Lines(new_lines)
+    }
+}
+
 fn main() {
     let input = include_str!("../data/input.txt");
 
     let commands = Commands::from_str(input);
-    let dig_plan = execute(&commands.0);
-    let field_count = dig_plan.len();
+    let dig_plan = get_dig_plan(&commands);
+    let field_count = dig_plan.size();
     println!("There are {} fields in the dig plan", field_count);
 
-    let commands = Commands::from_str2(input);
-    let lines = Lines::from(&commands);
+    // ==============
 
-    let dig_plan = get_dig_plan(&lines);
+    let commands = Commands::from_str2(input);
+
+    let dig_plan = get_dig_plan(&commands);
     let field_count = dig_plan.size();
     println!("There are {} fields in the dig plan", field_count);
 }
