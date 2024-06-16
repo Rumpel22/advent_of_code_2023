@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{ops::RangeInclusive, str::FromStr};
 
 use nom::{
     character::complete::{anychar, char, digit1, newline},
@@ -15,6 +15,31 @@ pub struct Part {
     pub m: u32,
     pub a: u32,
     pub s: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct PossibilityPart {
+    pub x: RangeInclusive<u16>,
+    pub m: RangeInclusive<u16>,
+    pub a: RangeInclusive<u16>,
+    pub s: RangeInclusive<u16>,
+}
+impl PossibilityPart {
+    pub fn new() -> Self {
+        let range = 1..=4000;
+        PossibilityPart {
+            x: range.clone(),
+            m: range.clone(),
+            a: range.clone(),
+            s: range.clone(),
+        }
+    }
+    pub fn possibilities(&self) -> usize {
+        self.x.len() * self.m.len() * self.a.len() * self.s.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.x.is_empty() || self.m.is_empty() || self.a.is_empty() || self.s.is_empty()
+    }
 }
 
 #[derive(Debug)]
