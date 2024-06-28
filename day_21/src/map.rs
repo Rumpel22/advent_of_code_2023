@@ -15,21 +15,9 @@ enum Direction {
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
 pub struct Coordinate {
-    x: usize,
-    y: usize,
+    x: i32,
+    y: i32,
 }
-
-// impl Coordinate {
-//     fn get_field(&self, direction: &Direction) -> Option<Coordinate> {
-//         let (x, y) = match direction {
-//             Direction::North => (self.x, self.y.checked_sub(1)?),
-//             Direction::East => (self.x.checked_sub(1)?, self.y),
-//             Direction::South => (self.x, self.y + 1),
-//             Direction::West => (self.x + 1, self.y),
-//         };
-//         Some(Coordinate { x, y })
-//     }
-// }
 
 #[derive(Debug)]
 pub struct Map {
@@ -59,8 +47,8 @@ impl FromStr for Map {
             .position(|c| c == 'S')
             .unwrap();
         let start = Coordinate {
-            y: start_index / width,
-            x: start_index % width,
+            y: (start_index / width) as i32,
+            x: (start_index % width) as i32,
         };
         Ok(Map {
             tiles,
@@ -110,13 +98,14 @@ impl Map {
 
     fn get_neighbor(&self, field: &Coordinate, direction: &Direction) -> Option<Coordinate> {
         let (x, y) = match direction {
-            Direction::North => (field.x, field.y.checked_sub(1)?),
-            Direction::East if field.x + 1 < self.width => (field.x + 1, field.y),
-            Direction::South if field.y + 1 < self.height => (field.x, field.y + 1),
-            Direction::West => (field.x.checked_sub(1)?, field.y),
-            _ => return None,
+            Direction::North => (field.x, field.y - 1),
+            Direction::East => (field.x + 1, field.y),
+            Direction::South => (field.x, field.y + 1),
+            Direction::West => (field.x - 1, field.y),
         };
-        let index = y * self.width + x;
+        let index_x = x.rem_euclid(self.width as i32);
+        let index_y = y.rem_euclid(self.height as i32);
+        let index = (index_y * self.width as i32 + index_x) as usize;
 
         match self.tiles[index] {
             Tile::Plot => Some(Coordinate { x, y }),

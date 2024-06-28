@@ -1,5 +1,5 @@
 {
-	"name": "Rust",
+	"name": "Rust - Advent Of Code 2023 ",
 	"image": "mcr.microsoft.com/devcontainers/rust:1-bookworm",
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
