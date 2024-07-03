@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum Tile {
     Plot,
     Rock,
@@ -19,6 +19,18 @@ pub struct Coordinate {
     y: i32,
 }
 
+impl Coordinate {
+    fn next(&self, direction: &Direction) -> Self {
+        let (x, y) = match direction {
+            Direction::North => (self.x, self.y - 1),
+            Direction::East => (self.x + 1, self.y),
+            Direction::South => (self.x, self.y + 1),
+            Direction::West => (self.x - 1, self.y),
+        };
+        Self { x, y }
+    }
+}
+
 #[derive(Debug)]
 pub struct Map {
     tiles: Vec<Tile>,
@@ -31,7 +43,7 @@ impl FromStr for Map {
     type Err = ();
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let tiles = input
+        let mut tiles = input
             .chars()
             .filter_map(|c| match c {
                 '.' | 'S' => Some(Tile::Plot),
@@ -46,10 +58,18 @@ impl FromStr for Map {
             .filter(|c| c.is_ascii_graphic())
             .position(|c| c == 'S')
             .unwrap();
-        let start = Coordinate {
-            y: (start_index / width) as i32,
-            x: (start_index % width) as i32,
-        };
+        let shift_up = start_index / width;
+        let shift_left = start_index % width;
+        tiles.rotate_left(shift_up * width);
+        for row in 0..height {
+            tiles[row * width..(row + 1) * width].rotate_left(shift_left);
+        }
+
+        let start = Coordinate { y: 0, x: 0 };
+        // let start = Coordinate {
+        //     y: (start_index / width) as i32,
+        //     x: (start_index % width) as i32,
+        // };
         Ok(Map {
             tiles,
             width,
@@ -78,9 +98,11 @@ impl<'a> Iterator for NeighbourIterator<'a> {
                 4 => Direction::West,
                 _ => unreachable!(),
             };
-            let new_coordinate = self.map.get_neighbor(&self.field, &direction);
-            if new_coordinate.is_some() {
-                return new_coordinate;
+            let new_coordinate = self.field.next(&direction);
+            let tile = self.map.get_tile(&new_coordinate);
+            match tile {
+                Tile::Plot => return Some(new_coordinate),
+                Tile::Rock => {}
             }
         }
         None
@@ -96,20 +118,47 @@ impl Map {
         }
     }
 
-    fn get_neighbor(&self, field: &Coordinate, direction: &Direction) -> Option<Coordinate> {
-        let (x, y) = match direction {
-            Direction::North => (field.x, field.y - 1),
-            Direction::East => (field.x + 1, field.y),
-            Direction::South => (field.x, field.y + 1),
-            Direction::West => (field.x - 1, field.y),
-        };
-        let index_x = x.rem_euclid(self.width as i32);
-        let index_y = y.rem_euclid(self.height as i32);
-        let index = (index_y * self.width as i32 + index_x) as usize;
+    fn get_tile(&self, field: &Coordinate) -> Tile {
+        let wrapped_field = self.wrap(field);
+        // let index = (y * self.width as i32 + x).rem_euclid(self.tiles.len() as i32) as usize;
 
-        match self.tiles[index] {
-            Tile::Plot => Some(Coordinate { x, y }),
-            Tile::Rock => None,
+        let index = (wrapped_field.y * self.width as i32 + wrapped_field.x) as usize;
+
+        self.tiles[index]
+    }
+    fn wrap(&self, field: &Coordinate) -> Coordinate {
+        let x = field.x.rem_euclid(self.width as i32);
+        let y = field.y.rem_euclid(self.height as i32);
+        Coordinate { x, y }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wrap_tests() {
+        let map = Map {
+            height: 11,
+            width: 9,
+            tiles: vec![Tile::Plot; 11 * 9],
+            start: Coordinate { x: 0, y: 0 },
+        };
+        let coordinates = [
+            (Coordinate { x: 0, y: 0 }, Coordinate { x: 0, y: 0 }),
+            (Coordinate { x: -9, y: 0 }, Coordinate { x: 0, y: 0 }),
+            (Coordinate { x: 0, y: -11 }, Coordinate { x: 0, y: 0 }),
+            (Coordinate { x: 9, y: 0 }, Coordinate { x: 0, y: 0 }),
+            (Coordinate { x: 0, y: 11 }, Coordinate { x: 0, y: 0 }),
+            (Coordinate { x: -1, y: 0 }, Coordinate { x: 8, y: 0 }),
+            (Coordinate { x: 1, y: 0 }, Coordinate { x: 1, y: 0 }),
+            (Coordinate { x: -1, y: -1 }, Coordinate { x: 8, y: 10 }),
+        ];
+
+        for (actual, expected) in coordinates {
+            let wrapped = map.wrap(&actual);
+            assert_eq!(wrapped, expected);
         }
     }
 }
