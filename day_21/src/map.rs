@@ -15,8 +15,8 @@ enum Direction {
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone, Copy)]
 pub struct Coordinate {
-    x: i32,
-    y: i32,
+    pub x: i16,
+    pub y: i16,
 }
 
 impl Coordinate {
@@ -34,7 +34,6 @@ impl Coordinate {
 #[derive(Debug)]
 pub struct Map {
     tiles: Vec<Tile>,
-    pub start: Coordinate,
     pub width: usize,
     pub height: usize,
 }
@@ -53,6 +52,7 @@ impl FromStr for Map {
             .collect::<Vec<_>>();
         let width = input.find(|c| c == '\n').unwrap();
         let height = tiles.len() / width;
+
         let start_index = input
             .chars()
             .filter(|c| c.is_ascii_graphic())
@@ -65,16 +65,10 @@ impl FromStr for Map {
             tiles[row * width..(row + 1) * width].rotate_left(shift_left);
         }
 
-        let start = Coordinate { y: 0, x: 0 };
-        // let start = Coordinate {
-        //     y: (start_index / width) as i32,
-        //     x: (start_index % width) as i32,
-        // };
         Ok(Map {
             tiles,
             width,
             height,
-            start,
         })
     }
 }
@@ -122,13 +116,13 @@ impl Map {
         let wrapped_field = self.wrap(field);
         // let index = (y * self.width as i32 + x).rem_euclid(self.tiles.len() as i32) as usize;
 
-        let index = (wrapped_field.y * self.width as i32 + wrapped_field.x) as usize;
+        let index = (wrapped_field.y * self.width as i16 + wrapped_field.x) as usize;
 
         self.tiles[index]
     }
     fn wrap(&self, field: &Coordinate) -> Coordinate {
-        let x = field.x.rem_euclid(self.width as i32);
-        let y = field.y.rem_euclid(self.height as i32);
+        let x = field.x.rem_euclid(self.width as i16);
+        let y = field.y.rem_euclid(self.height as i16);
         Coordinate { x, y }
     }
 }
@@ -143,7 +137,6 @@ mod tests {
             height: 11,
             width: 9,
             tiles: vec![Tile::Plot; 11 * 9],
-            start: Coordinate { x: 0, y: 0 },
         };
         let coordinates = [
             (Coordinate { x: 0, y: 0 }, Coordinate { x: 0, y: 0 }),
