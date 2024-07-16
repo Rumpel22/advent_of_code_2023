@@ -118,9 +118,8 @@ fn main() {
                     && abs_y > 0
                     && abs_y <= map_half
             })
-            .1
         })
-        .sum::<usize>();
+        .fold((0, 0), |sum, corner| (sum.0 + corner.0, sum.1 + corner.1));
 
     let additive_corners = corners
         .iter()
@@ -137,9 +136,8 @@ fn main() {
                     && sign_y * coordinate.y >= 0
                     && abs_y <= map_half
             })
-            .0
         })
-        .sum::<usize>();
+        .fold((0, 0), |sum, corner| (sum.0 + corner.0, sum.1 + corner.1));
 
     let in_bounds = |coordinate: &Coordinate| {
         (-map_half..=map_half).contains(&coordinate.x)
@@ -158,10 +156,20 @@ fn main() {
 
     let total_covered_even_maps = if more_evens { x2 } else { x1 };
     let total_covered_odd_maps = if more_evens { x1 } else { x2 };
+    let total_additive_corners = if more_evens {
+        additive_corners.1
+    } else {
+        additive_corners.0
+    };
+    let total_subtractive_corners = if more_evens {
+        subtract_corners.0
+    } else {
+        subtract_corners.1
+    };
     let total_fields = total_covered_even_maps * total_fields_even
         + total_covered_odd_maps * total_fields_odd
-        - (n + 1) * subtract_corners
-        + n * additive_corners;
+        - (n + 1) * total_subtractive_corners
+        + n * total_additive_corners;
 
     println!("There are {} fields.", total_fields);
 }
