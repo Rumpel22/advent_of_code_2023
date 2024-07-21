@@ -100,4 +100,47 @@ fn main() {
         "{} cubes can be disintegrated safely.",
         dispensable_cubes_count
     );
+
+    let supports = fallen_cubes
+        .iter()
+        .enumerate()
+        .flat_map(|(index, cube)| {
+            cube.supported_by
+                .iter()
+                .map(move |support| (*support, index))
+        })
+        .collect::<multimap::MultiMap<_, _>>();
+    // println!("{:?}", supports);
+
+    let sum_of_fallen_cubes = needed_cubes
+        .iter()
+        .map(|index| {
+            let mut could_falls = supports.get_vec(index).unwrap().clone();
+            let mut removed = HashSet::new();
+            removed.insert(*index);
+            while let Some(could_fall) = could_falls.pop() {
+                let cube = &fallen_cubes[could_fall];
+                if cube
+                    .supported_by
+                    .iter()
+                    .all(|index| removed.contains(index))
+                {
+                    removed.insert(could_fall);
+                    could_falls.append(
+                        &mut supports
+                            .get_vec(&could_fall)
+                            .unwrap_or(&mut Vec::new())
+                            .clone(),
+                    );
+                }
+            }
+
+            removed.len() - 1
+        })
+        .sum::<usize>();
+
+    println!(
+        "The sum of the number of other bricks that would fall is {}.",
+        sum_of_fallen_cubes
+    );
 }
