@@ -94,18 +94,18 @@ impl Map {
         }
     }
     pub(crate) fn next_steps(&self, step: &Step) -> Vec<Step> {
-        if let Tile::Slope(direction) = self.value(&step.coordinate).unwrap() {
-            if *direction != step.direction {
-                return vec![];
-            }
-            match step.coordinate.next(direction) {
-                Some(coordinate) => vec![Step {
-                    direction: *direction,
-                    coordinate,
-                }],
-                None => vec![],
-            };
-        }
+        // if let Tile::Slope(direction) = self.value(&step.coordinate).unwrap() {
+        //     if *direction != step.direction {
+        //         return vec![];
+        //     }
+        //     match step.coordinate.next(direction) {
+        //         Some(coordinate) => vec![Step {
+        //             direction: *direction,
+        //             coordinate,
+        //         }],
+        //         None => vec![],
+        //     };
+        // }
 
         PositionNeighbors {
             field: step.coordinate,

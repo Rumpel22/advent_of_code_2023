@@ -77,32 +77,43 @@ impl From<&Map> for Graph {
     }
 }
 
+#[derive(Default, Clone)]
+struct Path {
+    length: usize,
+    visited: Vec<Coordinate>,
+}
+
 impl Graph {
     pub(crate) fn longest_path(&self, start: &Coordinate, end: &Coordinate) -> Option<usize> {
-        let mut open_arcs = vec![(self.arcs_from(start), 0)];
-        let mut longest_path = None;
+        let mut open_arcs = vec![(self.arcs_from(start)[0], Path::default())];
+        let mut longest_path = Path::default();
 
-        while let Some((next_arcs, current_length)) = open_arcs.pop() {
-            for next_arc in next_arcs {
-                let arc_length = self.arcs.get(&next_arc).unwrap();
-
-                if next_arc.end == *end {
-                    longest_path = longest_path.max(Some(current_length + arc_length));
-                } else {
-                    open_arcs.push((self.arcs_from(&next_arc.end), current_length + arc_length));
-                }
+        while let Some((next_arc, current_path)) = open_arcs.pop() {
+            if current_path.visited.contains(&next_arc.start) {
+                continue;
             }
 
-            open_arcs.sort_unstable_by(|a, b| a.1.cmp(&b.1));
-        }
-        longest_path
-    }
+            let arc_length = self.arcs.get(&next_arc).unwrap();
+            let mut visited = current_path.visited.to_vec();
+            visited.push(next_arc.start);
 
-    fn nodes(&self) -> HashSet<Coordinate> {
-        self.arcs
-            .keys()
-            .flat_map(|arc| [arc.start, arc.end])
-            .collect::<HashSet<_>>()
+            let new_path = Path {
+                length: arc_length + current_path.length,
+                visited,
+            };
+
+            if next_arc.end == *end {
+                if new_path.length > longest_path.length {
+                    longest_path = new_path;
+                }
+            } else {
+                self.arcs_from(&next_arc.end).iter().for_each(|next_arc| {
+                    open_arcs.push((*next_arc, new_path.clone()));
+                });
+            }
+            open_arcs.sort_by(|(_, a), (_, b)| a.length.cmp(&b.length));
+        }
+        Some(longest_path.length)
     }
 
     fn arcs_from(&self, start: &Coordinate) -> Vec<Arc> {
