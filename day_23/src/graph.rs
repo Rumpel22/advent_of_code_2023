@@ -5,7 +5,7 @@ use crate::{
     map::{Map, Step},
 };
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(PartialEq, Eq, Hash, Copy, Clone)]
 struct Arc {
     start: Coordinate,
     end: Coordinate,
@@ -17,21 +17,20 @@ pub(crate) struct Graph {
 
 impl From<&Map> for Graph {
     fn from(map: &crate::map::Map) -> Self {
-        let mut arcs = HashMap::new();
+        let mut arcs = HashMap::<Arc, usize>::new();
 
-        let mut open_steps = vec![Step {
+        let mut start_fields = vec![Step {
             coordinate: map.start(),
             direction: Direction::Down,
         }];
 
-        while let Some(mut step) = open_steps.pop() {
+        while let Some(mut step) = start_fields.pop() {
             let start = step.coordinate;
-            let mut length = 0;
+            step.coordinate = step.coordinate.next(&step.direction).unwrap();
+            let mut length = 1;
 
             loop {
-                length += 1;
-
-                let mut next_steps = map.next_steps(&step);
+                let next_steps = map.next_steps(&step);
                 match next_steps.len() {
                     0 => {
                         if step.coordinate == map.goal() {
@@ -45,18 +44,28 @@ impl From<&Map> for Graph {
                         }
                         break;
                     }
-                    1 => step = next_steps[0],
+                    1 => {
+                        step = next_steps[0];
+                        length += 1
+                    }
                     2 | 3 => {
-                        if arcs.insert(
+                        if let Some(old_arc) = arcs.insert(
                             Arc {
                                 start,
                                 end: step.coordinate,
                             },
                             length,
-                        ) == None
-                        {
-                            open_steps.append(&mut next_steps);
+                        ) {
+                            assert!(old_arc == length);
+                        } else {
+                            for next_step in next_steps {
+                                start_fields.push(Step {
+                                    coordinate: step.coordinate,
+                                    direction: next_step.direction,
+                                });
+                            }
                         }
+
                         break;
                     }
                     _ => unreachable!(),
@@ -70,31 +79,37 @@ impl From<&Map> for Graph {
 
 impl Graph {
     pub(crate) fn longest_path(&self, start: &Coordinate, end: &Coordinate) -> Option<usize> {
-        self.longest_path_internal(start, end, &self.nodes())
-    }
+        let mut open_arcs = vec![(self.arcs_from(start), 0)];
+        let mut longest_path = None;
 
-    fn longest_path_internal(
-        &self,
-        start: &Coordinate,
-        end: &Coordinate,
-        nodes: &HashSet<Coordinate>,
-    ) -> Option<usize> {
-        Some(0)
+        while let Some((next_arcs, current_length)) = open_arcs.pop() {
+            for next_arc in next_arcs {
+                let arc_length = self.arcs.get(&next_arc).unwrap();
+
+                if next_arc.end == *end {
+                    longest_path = longest_path.max(Some(current_length + arc_length));
+                } else {
+                    open_arcs.push((self.arcs_from(&next_arc.end), current_length + arc_length));
+                }
+            }
+
+            open_arcs.sort_unstable_by(|a, b| a.1.cmp(&b.1));
+        }
+        longest_path
     }
 
     fn nodes(&self) -> HashSet<Coordinate> {
         self.arcs
-            .iter()
-            .flat_map(|(arc, _)| [arc.start, arc.end])
+            .keys()
+            .flat_map(|arc| [arc.start, arc.end])
             .collect::<HashSet<_>>()
     }
 
-    fn arc_len(&self, start: &Coordinate, end: &Coordinate) -> Option<usize> {
+    fn arcs_from(&self, start: &Coordinate) -> Vec<Arc> {
         self.arcs
-            .get(&Arc {
-                start: *start,
-                end: *end,
-            })
+            .keys()
+            .filter(|arc| arc.start == *start)
             .copied()
+            .collect()
     }
 }

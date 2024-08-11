@@ -7,7 +7,7 @@ use map::Map;
 use std::str::FromStr;
 
 fn main() {
-    let input = include_str!("../data/demo_input.txt");
+    let input = include_str!("../data/input.txt");
     let map = Map::from_str(input).unwrap();
 
     let graph = Graph::from(&map);
