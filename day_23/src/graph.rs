@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::{
     coordinate::{Coordinate, Direction},
@@ -111,8 +111,8 @@ impl Graph {
                     open_arcs.push((*next_arc, new_path.clone()));
                 });
             }
-            open_arcs.sort_by(|(_, a), (_, b)| a.length.cmp(&b.length));
         }
+
         Some(longest_path.length)
     }
 
