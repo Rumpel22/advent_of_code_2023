@@ -36,23 +36,27 @@ fn parse_hailstones(input: &str) -> Vec<Hailstone> {
         .collect::<Vec<_>>()
 }
 
-fn do_intersect(h1: &Hailstone, h2: &Hailstone, range: &RangeInclusive<f64>) -> bool {
+fn trajectories_intersect(h1: &Hailstone, h2: &Hailstone, range: &RangeInclusive<f64>) -> bool {
+    // y = a*x + b
     let a1 = h1.velocity.y / h1.velocity.x;
     let b1 = h1.position.y - a1 * h1.position.x;
     let a2 = h2.velocity.y / h2.velocity.x;
     let b2 = h2.position.y - a2 * h2.position.x;
 
     if a1 == a2 {
+        // Parallel (a1==a2), maybe identical (if b1==b2)
         return b1 == b2;
     }
     let x = (b2 - b1) / (a1 - a2);
     let y = a1 * x + b1;
     if !range.contains(&x) || !range.contains(&y) {
+        // Out of area of interest
         return false;
     }
     let t1 = (x - h1.position.x) / h1.velocity.x;
     let t2 = (x - h2.position.x) / h2.velocity.x;
     if t1 < 0.0 || t2 < 0.0 {
+        // Crossed in the past
         return false;
     }
     true
@@ -62,8 +66,7 @@ fn count_intersections(hailstones: &[Hailstone], range: &RangeInclusive<f64>) ->
     hailstones
         .iter()
         .combinations(2)
-        .map(|pair| do_intersect(pair[0], pair[1], range))
-        .filter(|b| *b)
+        .filter(|pair| trajectories_intersect(pair[0], pair[1], range))
         .count()
 }
 
