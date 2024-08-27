@@ -32,7 +32,7 @@ dependencies = [
 name = "day_03"
 version = "0.1.0"
 dependencies = [
- "itertools 0.12.0",
+ "itertools",
  "regex",
 ]
 
@@ -52,7 +52,7 @@ version = "0.1.0"
 name = "day_07"
 version = "0.1.0"
 dependencies = [
- "itertools 0.12.0",
+ "itertools",
 ]
 
 [[package]]
@@ -74,14 +74,14 @@ version = "0.1.0"
 name = "day_11"
 version = "0.1.0"
 dependencies = [
- "itertools 0.12.0",
+ "itertools",
 ]
 
 [[package]]
 name = "day_12"
 version = "0.1.0"
 dependencies = [
- "itertools 0.12.0",
+ "itertools",
  "nom",
  "num",
 ]
@@ -143,7 +143,7 @@ version = "0.1.0"
 name = "day_24"
 version = "0.1.0"
 dependencies = [
- "itertools 0.13.0",
+ "is_close",
  "regex",
  "vector3d",
 ]
@@ -155,19 +155,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a26ae43d7bcc3b814de94796a5e736d4029efb0ee900c12e2d54c993ad1a1e07"
 
 [[package]]
-name = "itertools"
-version = "0.12.0"
+name = "is_close"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
+checksum = "c4d49e01f14871e71a0dce6f09eb72308bca74a4adb1bab5a8c34ee26979a8a2"
 dependencies = [
- "either",
+ "num-traits",
 ]
 
 [[package]]
 name = "itertools"
-version = "0.13.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
+checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
 dependencies = [
  "either",
 ]
