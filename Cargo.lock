@@ -143,10 +143,17 @@ version = "0.1.0"
 name = "day_24"
 version = "0.1.0"
 dependencies = [
+ "divisors_fixed",
  "is_close",
+ "math_vector",
  "regex",
- "vector3d",
 ]
+
+[[package]]
+name = "divisors_fixed"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f6cb45900ce66bd90f092a3bec7a5579ed5404654fa0016f5ea7e8aec4ae708"
 
 [[package]]
 name = "either"
@@ -170,6 +177,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
 dependencies = [
  "either",
+]
+
+[[package]]
+name = "math_vector"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad0b04d86d1f2c85e149f3a7f25f6e2dadbd0c7bc1549c8841610de2a683a78d"
+dependencies = [
+ "proc_vector",
 ]
 
 [[package]]
@@ -289,6 +305,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc_vector"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6cee552131901ddbd806c8c9d200a95ef481a399b78b215c3f00575e11175b7"
+
+[[package]]
 name = "quote"
 version = "1.0.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -362,13 +384,3 @@ name = "unicode-ident"
 version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
-
-[[package]]
-name = "vector3d"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fbd7eb407bb0fe64c8abd07288e62029e142815f4c11eb9eba67fa87f07c87e2"
-dependencies = [
- "serde",
- "serde_derive",
-]
