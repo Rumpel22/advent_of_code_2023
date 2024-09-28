@@ -118,12 +118,11 @@ where
         f(a.velocity).z.checked_div(f(a.velocity).z).unwrap_or(0),
     ]);
 
-    let mut v = divisors
+    let v = divisors
         .iter()
         .flat_map(|divisor| [*divisor as i64, -(*divisor as i64)])
         .map(|divisor| unit * divisor + f(a.velocity))
         .collect::<Vec<_>>();
-    v.truncate(v.len() / 2);
     v
 }
 
@@ -217,7 +216,7 @@ fn is_valid(stone: &Hailstone<i64>, hailstones: &[Hailstone<i64>]) -> bool {
 }
 
 fn main() {
-    let input = include_str!("../data/input.txt");
+    let input = include_str!("../data/demo_input.txt");
     let hailstones = parse_hailstones(input);
 
     // let intersections = count_intersections(&hailstones, &(7.0..=27.0));
