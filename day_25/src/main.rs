@@ -90,12 +90,13 @@ impl Graph {
         self.nodes.push(new_node);
         let new_index = self.nodes.len() - 1;
 
-        self.edges = self
+        let new_nodes = self
             .edges
             .iter()
+            .filter(|(edge, _)| {
+                !((edge.start == a && edge.end == b) || (edge.start == b && edge.end == a))
+            })
             .filter_map(|(edge, weight)| match (edge.start, edge.end) {
-                (start, end) if start == a && end == b => None,
-                (start, end) if start == b && end == a => None,
                 (start, end) if start == a || start == b => Some((
                     Edge {
                         start: end,
@@ -110,7 +111,7 @@ impl Graph {
                     },
                     *weight,
                 )),
-                (_, _) => Some((*edge, *weight)),
+                _ => None,
             })
             .fold(HashMap::<_, _>::new(), |mut map, (edge, weight)| {
                 map.get_mut(&edge)
@@ -124,54 +125,12 @@ impl Graph {
                     });
                 map
             });
+
+        self.edges.retain(|edge, _| {
+            !(edge.start == a || edge.start == b || edge.end == a || edge.end == b)
+        });
+        self.edges.extend(new_nodes);
     }
-
-    // fn split(&mut self) {
-    //     let x = (0..self.nodes.len() - 1)
-    //         .map(|node| self.get_paths(node))
-    //         .fold(HashMap::<Edge, usize>::new(), |mut map, edges| {
-    //             edges.iter().for_each(|edge| {
-    //                 if let Some(weight) = map.get_mut(edge) {
-    //                     *weight += 1
-    //                 } else {
-    //                     map.insert(*edge, 1);
-    //                 }
-    //             });
-    //             map
-    //         });
-    //     println!("{:?}", x);
-    // }
-
-    // fn get_paths(&self, start_node: usize) -> Vec<Edge> {
-    //     let mut visited = HashSet::<_>::new();
-    //     visited.insert(start_node);
-    //     let mut to_follow = self
-    //         .neighbors(start_node)
-    //         .map(|node| Edge {
-    //             start: start_node,
-    //             end: node,
-    //         })
-    //         .collect::<Vec<_>>();
-    //     let mut paths = vec![];
-    //     while let Some(node) = to_follow.pop() {
-    //         if visited.insert(node.end) {
-    //             let x = self.neighbors(node.end).map(|next| Edge {
-    //                 start: node.end,
-    //                 end: next,
-    //             });
-    //             to_follow.extend(x);
-
-    //             paths.push(node);
-    //         }
-    //     }
-    //     paths
-    // }
-    // {
-    //         while self.connections.len() > 1 {
-    //             let (node1, node2) = self.nodes_to_merge();
-    //             self.merge_nodes(node1, node2);
-    //         }
-    //     }
 
     fn is_way_back(&self, node: usize) -> bool {
         self.neighbors(node).next().is_some()
@@ -211,7 +170,7 @@ impl Graph {
 }
 
 fn main() {
-    let input = include_str!("../data/input.txt");
+    let input = include_str!("../data/demo_input.txt");
     let mut graph = Graph::from_str(input).unwrap();
     // println!("{:?}", graph);
 
